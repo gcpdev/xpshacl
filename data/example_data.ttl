@@ -1,0 +1,10 @@
+@prefix ex: <http://example.org/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:resource1 a ex:Person ;
+    ex:hasAge "30"^^xsd:integer .
+
+ex:resource2 a ex:Person .
+
+ex:resource3 a ex:Organization ;
+    ex:hasName "Example Org" .

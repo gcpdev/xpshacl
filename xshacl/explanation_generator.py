@@ -4,6 +4,7 @@ import logging
 from typing import Dict, List, Optional, Set, Tuple, Union
 from dataclasses import dataclass, field
 from enum import Enum
+import ollama
 
 # Import necessary libraries
 from rdflib import Graph, URIRef, Literal, BNode, Namespace
@@ -35,7 +36,7 @@ logger = logging.getLogger("xshacl")
 class ExplanationGenerator:
     """Generates natural language explanations using an LLM"""
 
-    def __init__(self, model_name: str = "gpt2"):  # or "t5-small"
+    def __init__(self, model_name: str = "qwq"):  # or "t5-small"
         self.generator = pipeline("text-generation", model=model_name)
 
     def generate_explanation(
@@ -115,7 +116,7 @@ class ExplainableShaclSystem:
 class LocalExplanationGenerator:
     """Generates natural language explanations using Ollama"""
 
-    def __init__(self, model_name: str = "llama2"):
+    def __init__(self, model_name: str = "gemma:2b"):
         self.model_name = model_name
 
     def generate_explanation(
@@ -131,11 +132,17 @@ class LocalExplanationGenerator:
             f"Justification: {json.dumps(justification_tree.to_dict(), indent=2)}. "
         )
         prompt += f"Relevant context: {json.dumps(context.__dict__, indent=2)}. "
-        prompt += "Generate a human-readable explanation."
+        prompt += """INSTRUCTIONS:
+        Return only a human-readable explanation, and nothing else. Provide the justification only, no context, no small introductory phrasing.
+        Be short and straight to the point, but do include all relevant information to the user.
+        """
 
         response = ollama.chat(
             model=self.model_name, messages=[{"role": "user", "content": prompt}]
         )
+        if self.model_name == "gemma:2b":
+            if ''.join(response["message"]["content"].split("\n")[1:]) != '':
+                return ''.join(response["message"]["content"].split("\n")[1:])
         return response["message"]["content"]
 
     def generate_correction_suggestions(
@@ -144,7 +151,7 @@ class LocalExplanationGenerator:
         """Generates correction suggestions for a violation using Ollama"""
         prompt = f"Given the following SHACL violation: {violation.message or 'Unknown violation'}. "
         prompt += f"Relevant context: {json.dumps(context.__dict__, indent=2)}. "
-        prompt += "Suggest possible corrections."
+        prompt += "Suggest possible corrections. Be short and straight to the point, and do include suggestions to fix only what was reported as violation."
 
         response = ollama.chat(
             model=self.model_name, messages=[{"role": "user", "content": prompt}]

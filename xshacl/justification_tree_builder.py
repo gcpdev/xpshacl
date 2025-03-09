@@ -298,3 +298,55 @@ class JustificationTreeBuilder:
                 root.add_child(JustificationNode(statement=reasoning, type="inference"))
         elif "MinInclusiveConstraintComponent" in violation.constraint_id:
             min_value = None
+
+    def _format_uri(self, uri: str) -> str:
+        """
+        Formats a URI for human-readable output.
+        """
+        # Simple formatting - can be improved with prefix mappings, etc.
+        if uri.startswith("http://"):
+            return f"<{uri}>"
+        return uri
+
+    def _get_shape_constraint_text(self, violation: ConstraintViolation) -> str:
+        """
+        Retrieves the constraint text from the shapes graph.
+        """
+        constraint_node = URIRef(violation.constraint_id)
+        shape_node = URIRef(violation.shape_id)
+
+        # Try to get the constraint value
+        constraint_value = None
+        for s, p, o in self.shapes_graph.triples((shape_node, None, None)):
+            if str(p) == str(constraint_node):
+                constraint_value = o
+                break
+
+        if constraint_value:
+            return f"The shape {self._format_uri(violation.shape_id)} has a constraint {self._format_uri(violation.constraint_id)} with value {constraint_value}."
+        else:
+            return f"The shape {self._format_uri(violation.shape_id)} has a constraint {self._format_uri(violation.constraint_id)}."
+    
+    def _count_property_values(self, focus_node: NodeId, property_path: str) -> int:
+        """
+        Counts the number of values for a given property path of a focus node.
+        """
+        count = 0
+        focus_uri = URIRef(focus_node)
+        property_uri = URIRef(property_path)
+        
+        for s, p, o in self.data_graph.triples((focus_uri, property_uri, None)):
+            count += 1
+        return count
+
+    def _generate_data_evidence(self, focus_node: NodeId, property_path: str) -> str:
+        """
+        Generates evidence from the data graph for a given focus node and property path.
+        """
+        evidence = ""
+        focus_uri = URIRef(focus_node)
+        property_uri = URIRef(property_path)
+        
+        for s, p, o in self.data_graph.triples((focus_uri, property_uri, None)):
+            evidence += f"{s.n3()} {p.n3()} {o.n3()} .\n"
+        return evidence

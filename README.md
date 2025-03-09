@@ -72,11 +72,12 @@ graph LR
     pip install -r requirements.txt
     ```
 
-4.  (Optional) Install and run Ollama, and pull a model (e.g., llama2):
+4.  (Optional) Install and run Ollama, and pull a model (e.g., `gemma:2b`):
 
     ```bash
-    ollama pull llama2
+    ollama pull gemma:2b
     ```
+    PS: `gemma:2b` is recommended due to its speed, but `llama3.3` could be used for better quality or even `deepseek-r1` for more complex shapes.
 
 ### Usage
 

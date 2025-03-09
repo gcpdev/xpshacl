@@ -59,7 +59,7 @@ def main():
 
     explanations = []
     for violation in violations:
-        justification_tree = justification_builder.build_tree(violation)
+        justification_tree = justification_builder.build_justification_tree(violation)
         retrieved_context = context_retriever.retrieve_context(violation)
         natural_language_explanation = explanation_generator.generate_explanation(
             violation, justification_tree, retrieved_context

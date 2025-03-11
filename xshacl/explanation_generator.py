@@ -5,15 +5,14 @@ from typing import Dict, List, Optional, Set, Tuple, Union
 from dataclasses import dataclass, field
 from enum import Enum
 import ollama
+import openai
 
-# Import necessary libraries
 from rdflib import Graph, URIRef, Literal, BNode, Namespace
 from rdflib.namespace import RDF, RDFS, SH, XSD
 from pyshacl import validate
 import re
 from transformers import pipeline
 
-# Import your existing components
 from xshacl_architecture import (
     ConstraintViolation,
     JustificationTree,
@@ -32,12 +31,26 @@ logger = logging.getLogger("xshacl")
 
 # --- LLM Integration for Natural Language Generation ---
 
-
 class ExplanationGenerator:
     """Generates natural language explanations using an LLM"""
 
-    def __init__(self, model_name: str = "qwq"):  # or "t5-small"
-        self.generator = pipeline("text-generation", model=model_name)
+    def __init__(self, model_name: str = "gpt-4o-mini-2024-07-18"):
+        self.model_name = model_name
+        if("gpt" in model_name):
+            openai.api_key = os.getenv("OPENAI_API_KEY")
+            openai.base_url = "https://api.openai.com/v1/"
+            if not openai.api_key:
+                raise ValueError("OPENAI_API_KEY environment variable not set.")
+        elif("gemini" in model_name):
+            openai.api_key = os.getenv("GEMINI_API_KEY")
+            openai.base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
+            if not openai.api_key:
+                raise ValueError("GEMINI_API_KEY environment variable not set.")
+        elif("claude" in model_name):
+            openai.api_key = os.getenv("ANTHROPIC_API_KEY")
+            openai.base_url = "https://api.anthropic.com/v1/"
+            if not openai.api_key:
+                raise ValueError("ANTHROPIC_API_KEY environment variable not set.")
 
     def generate_explanation(
         self,
@@ -52,12 +65,19 @@ class ExplanationGenerator:
             f"Justification: {json.dumps(justification_tree.to_dict(), indent=2)}. "
         )
         prompt += f"Relevant context: {json.dumps(context.__dict__, indent=2)}. "
-        prompt += "Generate a human-readable explanation."
+        prompt += "Generate a short and concise human-readable explanation."
 
-        generated_text = self.generator(prompt, max_length=250, num_return_sequences=1)[
-            0
-        ]["generated_text"]
-        return generated_text
+        try:
+            response = openai.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+            )
+            return response.choices[0].message.content.strip()
+        except openai._exceptions.OpenAIError as e:
+            logger.error(f"OpenAI API error: {e}")
+            return f"Error generating explanation: {e}"
 
     def generate_correction_suggestions(
         self, violation: ConstraintViolation, context: DomainContext
@@ -65,13 +85,19 @@ class ExplanationGenerator:
         """Generates correction suggestions for a violation"""
         prompt = f"Given the following SHACL violation: {violation.message or 'Unknown violation'}. "
         prompt += f"Relevant context: {json.dumps(context.__dict__, indent=2)}. "
-        prompt += "Suggest possible corrections."
+        prompt += "Suggest possible corrections. Be short and concise, and do include suggestions to fix only what was reported as violation"
 
-        generated_text = self.generator(prompt, max_length=150, num_return_sequences=1)[
-            0
-        ]["generated_text"]
-        return [generated_text]
-
+        try:
+            response = openai.chat.completions.create(
+                model=self.model_name,
+                messages=[
+                    {"role": "user", "content": prompt}
+                ],
+            )
+            return [response.choices[0].message.content.strip()]
+        except openai._exceptions.OpenAIError as e:
+            logger.error(f"OpenAI API error: {e}")
+            return [f"Error generating correction suggestions: {e}"]
 
 class ExplainableShaclSystem:
     """Combines all components to provide explainable SHACL validation"""

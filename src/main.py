@@ -8,13 +8,14 @@ from justification_tree_builder import JustificationTreeBuilder
 from context_retriever import ContextRetriever
 from explanation_generator import ExplanationGenerator, LocalExplanationGenerator
 from xshacl_architecture import ExplanationOutput
+from violation_kg import ViolationKnowledgeGraph
+from violation_signature_factory import create_violation_signature
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("xshacl")
-
 
 def main():
     parser = argparse.ArgumentParser(description="xSHACL: Explainable SHACL Validation")
@@ -44,6 +45,7 @@ def main():
     validator = ExtendedShaclValidator(shapes_graph, args.inference)
     justification_builder = JustificationTreeBuilder(data_graph, shapes_graph)
     context_retriever = ContextRetriever(data_graph, shapes_graph)
+    violation_kg = ViolationKnowledgeGraph()
 
     if args.local:
         explanation_generator = LocalExplanationGenerator()
@@ -59,23 +61,24 @@ def main():
 
     explanations = []
     for violation in violations:
-        justification_tree = justification_builder.build_justification_tree(violation)
-        retrieved_context = context_retriever.retrieve_context(violation)
-        natural_language_explanation = explanation_generator.generate_explanation(
-            violation, justification_tree, retrieved_context
-        )
-        correction_suggestions = explanation_generator.generate_correction_suggestions(
-            violation, retrieved_context
-        )
-
-        explanation_output = ExplanationOutput(
-            violation=violation,
-            justification_tree=justification_tree,
-            retrieved_context=retrieved_context,
-            natural_language_explanation=natural_language_explanation,
-            correction_suggestions=correction_suggestions,
-        )
-        explanations.append(explanation_output)
+        # 1. Build the justification tree
+        jt = justification_builder.build_justification_tree(violation)
+        # 2. Retrieve any domain context
+        context = context_retriever.retrieve_context(violation)
+        # 3. Generate signature
+        signature = create_violation_signature(violation)
+        
+        # 4. Check the KG cache
+        if violation_kg.has_violation(signature):
+            explanation = violation_kg.get_explanation(signature)
+        else:
+            explanation = explanation_generator.generate_explanation(
+                violation, jt, context
+            )
+            # Store new explanation in KG
+            violation_kg.add_violation(signature, explanation)
+        
+        explanations.append(explanation)
 
     # Output explanations
     for explanation in explanations:

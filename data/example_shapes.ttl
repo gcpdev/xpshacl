@@ -11,11 +11,17 @@ ex:PersonShape a sh:NodeShape ;
     sh:property [
         sh:path ex:hasAge ;
         sh:datatype xsd:integer ;
+		sh:minInclusive 0 ;
+		sh:maxInclusive 150 ;
     ] .
 
 ex:OrganizationShape a sh:NodeShape ;
     sh:targetClass ex:Organization ;
     sh:property [
         sh:path ex:hasName ;
+        sh:minCount 1 ;
+    ] ;
+    sh:property [
+        sh:path ex:foundedOn ;
         sh:minCount 1 ;
     ] .

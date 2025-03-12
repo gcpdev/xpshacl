@@ -130,32 +130,53 @@ class DomainContext:
 class ExplanationOutput:
     """Final output containing both formal and natural language explanations"""
 
-    violation: ConstraintViolation
-    justification_tree: JustificationTree
-    retrieved_context: DomainContext
     natural_language_explanation: str
     correction_suggestions: List[str] = field(default_factory=list)
+    violation: Optional[ConstraintViolation] = None
+    justification_tree: Optional[JustificationTree] = None
+    retrieved_context: Optional[DomainContext] = None
 
     def to_dict(self) -> Dict:
-        """Convert the explanation to a dictionary representation"""
-        return {
-            "violation": {
+        """Convert the explanation to a dictionary representation."""
+        
+        # Build a dictionary for `violation` only if not None
+        violation_dict = {}
+        if self.violation is not None:
+            violation_dict = {
                 "focus_node": self.violation.focus_node,
                 "shape_id": self.violation.shape_id,
                 "constraint_id": self.violation.constraint_id,
-                "violation_type": self.violation.violation_type.value,
+                "violation_type": (
+                    self.violation.violation_type.value
+                    if self.violation.violation_type
+                    else None
+                ),
                 "property_path": self.violation.property_path,
                 "value": self.violation.value,
                 "message": self.violation.message,
                 "severity": self.violation.severity,
-            },
-            "justification_tree": self.justification_tree.to_dict(),
-            "retrieved_context": {
+            }
+        
+        # Build the justification tree dict if present
+        justification_tree_dict = {}
+        if self.justification_tree is not None:
+            justification_tree_dict = self.justification_tree.to_dict()
+        
+        # Build the retrieved context dict if present
+        retrieved_context_dict = {}
+        if self.retrieved_context is not None:
+            retrieved_context_dict = {
                 "ontology_fragments": self.retrieved_context.ontology_fragments,
                 "shape_documentation": self.retrieved_context.shape_documentation,
                 "similar_cases": self.retrieved_context.similar_cases,
                 "domain_rules": self.retrieved_context.domain_rules,
-            },
+            }
+        
+        # Finally, assemble the full dictionary
+        return {
+            "violation": violation_dict,
+            "justification_tree": justification_tree_dict,
+            "retrieved_context": retrieved_context_dict,
             "natural_language_explanation": self.natural_language_explanation,
             "correction_suggestions": self.correction_suggestions,
         }

@@ -1,0 +1,55 @@
+@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix owl:  <http://www.w3.org/2002/07/owl#> .
+@prefix xsh:  <http://example.org/xsh#> .
+
+# Classes
+xsh:ViolationSignature a owl:Class ;
+    rdfs:label "Violation Signature" ;
+    rdfs:comment "Represents a canonical signature for a violation type." .
+
+xsh:Explanation a owl:Class ;
+    rdfs:label "Explanation" ;
+    rdfs:comment "Stores a formal and natural language explanation for a violation signature." .
+
+# Object and data properties
+xsh:hasExplanation a owl:ObjectProperty ;
+    rdfs:domain xsh:ViolationSignature ;
+    rdfs:range xsh:Explanation ;
+    rdfs:label "has explanation" .
+
+xsh:constraintComponent a owl:DatatypeProperty ;
+    rdfs:domain xsh:ViolationSignature ;
+    rdfs:range rdfs:Literal ;
+    rdfs:label "constraint component" .
+
+xsh:propertyPath a owl:DatatypeProperty ;
+    rdfs:domain xsh:ViolationSignature ;
+    rdfs:range rdfs:Literal ;
+    rdfs:label "property path" .
+
+xsh:violationType a owl:DatatypeProperty ;
+    rdfs:domain xsh:ViolationSignature ;
+    rdfs:range rdfs:Literal ;
+    rdfs:label "violation type" .
+
+# For constraint parameters, you might store them either as
+# multiple properties (like xsh:minCount, xsh:pattern, etc.)
+# or as a single property with a JSON string or blank nodes.
+# For brevity, here's an example single property:
+
+xsh:constraintParams a owl:DatatypeProperty ;
+    rdfs:domain xsh:ViolationSignature ;
+    rdfs:range rdfs:Literal ;
+    rdfs:label "constraint parameters" .
+
+# Explanation output fields
+xsh:naturalLanguageText a owl:DatatypeProperty ;
+    rdfs:domain xsh:Explanation ;
+    rdfs:range rdfs:Literal ;
+    rdfs:label "natural language text" .
+
+xsh:correctionSuggestions a owl:DatatypeProperty ;
+    rdfs:domain xsh:Explanation ;
+    rdfs:range rdfs:Literal ;
+    rdfs:label "correction suggestions" .

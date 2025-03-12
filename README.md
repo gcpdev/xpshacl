@@ -38,6 +38,7 @@ graph LR
 * **Justification Tree Construction:** Builds logical justification trees to explain the reasoning behind each violation.
 * **Context Retrieval (RAG):** Retrieves relevant domain knowledge, including ontology fragments and shape documentation, to enrich explanations.
 * **Natural Language Generation (LLM):** Generates human-readable explanations and correction suggestions using large language models.
+* **Support to multiple LLMs:** To the moment, OpenAI, Google Gemini, and Anthropic's Claude models are supported via API. Any other models with API following the OpenAI standard can be quickly and easily extended.
 * **Ollama Integration:** Enables local LLM usage for enhanced privacy and performance.
 * **Simple Interface:** Provides an easy-to-use interface to validate and explain RDF data.
 * **Generalizability:** The underlying methodology is adaptable to other constraint languages.
@@ -47,6 +48,7 @@ graph LR
 ### Prerequisites
 
 * Python 3.7+
+* API Keys for LLMs (OpenAI, Google, or Anthropic)
 * Ollama (optional, for local LLM usage)
 
 ### Installation
@@ -72,7 +74,15 @@ graph LR
     pip install -r requirements.txt
     ```
 
-4.  (Optional) Install and run Ollama, and pull a model (e.g., `gemma:2b`):
+4.  Add a `.env` file to the root folder containing your API keys (won't be committed to any repo):
+
+    ```bash
+    OPENAI_API_KEY=xxxxxxxxx
+    GEMINI_API_KEY=xxxxxxxxx
+    ANTHROPIC_API_KEY=xxxxxxxxx
+    ```
+
+5.  (Optional, for running locally) Install and run Ollama, and pull a model (e.g., `gemma:2b`):
 
     ```bash
     ollama pull gemma:2b
@@ -83,13 +93,17 @@ graph LR
 
 1.  Place your RDF data and SHACL shapes files in the `data/` directory.
 
-2.  Run the `main.py` script:
+2.  Run the `main.py` script with your parameters, e.g.:
 
     ```bash
-    python xshacl/main.py
+    python src/main.py --data data/example_data.ttl --shapes data/example_shapes.ttl --model=gpt-4o-mini-2024-07-18
     ```
 
-    * Ensure that you have updated `main.py` to point to the correct data and shape files.
+    or to run with Ollama:
+
+    ```bash
+    python src/main.py --data data/example_data.ttl --shapes data/example_shapes.ttl --local
+    ```
 
 3.  The system will validate the RDF data and output detailed explanations for any violations in JSON format.
 
@@ -149,10 +163,9 @@ xshacl/
 ├── data/
 │   ├── example_data.ttl
 │   └── example_shapes.ttl
-├── models/
 ├── logs/
 │   └── xshacl.log
-├── xshacl/
+├── src/
 │   ├── __init__.py
 │   ├── xshacl_architecture.py
 │   ├── extended_shacl_validator.py

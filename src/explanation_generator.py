@@ -6,12 +6,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 import ollama
 import openai
+from dotenv import load_dotenv
 
 from rdflib import Graph, URIRef, Literal, BNode, Namespace
 from rdflib.namespace import RDF, RDFS, SH, XSD
 from pyshacl import validate
 import re
-from transformers import pipeline
 
 from xshacl_architecture import (
     ConstraintViolation,
@@ -22,6 +22,8 @@ from xshacl_architecture import (
 from context_retriever import ContextRetriever
 from extended_shacl_validator import ExtendedShaclValidator
 from justification_tree_builder import JustificationTreeBuilder
+
+load_dotenv()
 
 # Configure logging
 logging.basicConfig(

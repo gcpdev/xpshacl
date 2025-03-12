@@ -6,8 +6,8 @@ These trees represent the formal reasoning behind a validation failure.
 """
 
 import logging
-from typing import Dict, Optional, List, Tuple, Set
-from rdflib import Graph, URIRef, BNode, Literal, Namespace
+from typing import Dict
+from rdflib import Graph, URIRef, Namespace
 from rdflib.namespace import RDF, RDFS, SH
 
 from xshacl_architecture import (
@@ -16,8 +16,6 @@ from xshacl_architecture import (
     JustificationTree,
     ViolationType,
     NodeId,
-    ConstraintId,
-    ShapeId,
 )
 
 logger = logging.getLogger("xshacl.justification")

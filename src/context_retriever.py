@@ -1,30 +1,16 @@
-import os
-import json
 import logging
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List
 from dataclasses import dataclass, field
-from enum import Enum
 
-# Import necessary libraries
-from rdflib import Graph, URIRef, Literal, BNode, Namespace
-from rdflib.namespace import RDF, RDFS, SH, XSD
+from rdflib import Graph, URIRef, Namespace
+from rdflib.namespace import RDFS, SH
 from pyshacl import validate
-import re
 
-# Import your existing components
 from xshacl_architecture import (
     ConstraintViolation,
-    ViolationType,
-    NodeId,
-    ConstraintId,
     ShapeId,
-    JustificationNode,
-    JustificationTree,
     DomainContext,
-    ExplanationOutput,
 )
-from extended_shacl_validator import ExtendedShaclValidator
-from justification_tree_builder import JustificationTreeBuilder
 
 # Configure logging
 logging.basicConfig(
@@ -46,16 +32,9 @@ class ContextRetriever:
         """Retrieves domain context relevant to a constraint violation"""
         context = DomainContext()
 
-        # Retrieve relevant ontology fragments (simplified example)
         context.ontology_fragments = self._get_ontology_fragments(violation)
-
-        # Retrieve shape documentation
         context.shape_documentation = self._get_shape_documentation(violation.shape_id)
-
-        # Retrieve similar cases (placeholder - needs actual implementation)
         context.similar_cases = self._get_similar_cases(violation)
-
-        # Retrieve domain rules (placeholder - needs actual implementation)
         context.domain_rules = self._get_domain_rules(violation)
 
         return context
@@ -80,11 +59,96 @@ class ContextRetriever:
         return documentation
 
     def _get_similar_cases(self, violation: ConstraintViolation) -> List[Dict]:
-        """Retrieves similar violation cases (placeholder)"""
-        # Placeholder: Implement logic to find similar violations
-        return []
+        """
+        Finds 'similar cases' in the data graph. For example, if the violation is 
+        that a node doesn't have 'ex:hasName', we look for other nodes of the same type
+        that are also missing 'ex:hasName'.
 
-    def _get_domain_rules(self, violation: ConstraintViolation) -> List[str]:
-        """Retrieves relevant domain rules (placeholder)"""
-        # Placeholder: Implement logic to retrieve domain rules
-        return []
+        Returns a list of URIs representing those similar nodes.
+        """
+
+        # 1. Identify the focus node type
+        focus_node_uri = URIRef(violation.focus_node)
+        property_path_uri = URIRef(violation.property_path)
+        
+        # Query to find the type of the focus node:
+        query_focus_type = f"""
+        SELECT ?type
+        WHERE {{
+            <{focus_node_uri}> a ?type .
+        }}
+        """
+        results_type = self.data_graph.query(query_focus_type)
+        focus_node_types = [str(row["type"]) for row in results_type]
+        
+        # 2. For each focus_node_type, find other nodes of the same type
+        # that are also missing the same property.
+        similar_nodes = set()
+        for t in focus_node_types:
+            query_similar = f"""
+            SELECT DISTINCT ?node
+            WHERE {{
+                ?node a <{t}> .
+                FILTER NOT EXISTS {{
+                   ?node <{property_path_uri}> ?anyval .
+                }}
+                FILTER(?node != <{focus_node_uri}>)
+            }}
+            """
+            results_similar = self.data_graph.query(query_similar)
+            for row in results_similar:
+                similar_nodes.add(str(row["node"]))
+
+        return list(similar_nodes)
+
+    def _get_domain_rules(self, violation: ConstraintViolation) -> list[str]:
+        """
+        Returns a list of human-readable strings describing 'domain rules' 
+        that relate to the property path or constraint type for the given violation.
+
+        Example assumption:
+        - There's a custom class xsh:DomainRule in the shapes graph.
+        - Each rule has something like xsh:appliesToProperty <propertyURI>.
+        - Each rule might have a textual description or comment.
+        """
+
+        property_uri = violation.property_path
+        constraint_uri = violation.constraint_id  
+
+        if not property_uri:
+            return []
+
+        XSH = Namespace("http://xshacl.org/#")
+
+        query = f"""
+        PREFIX rdfs: <{RDFS}>
+        PREFIX xsh: <{XSH}>
+        PREFIX sh: <{SH}>
+
+        SELECT DISTINCT ?rule ?comment
+        WHERE {{
+        ?rule a xsh:DomainRule .
+
+        # Suppose domain rules either reference the property or the constraint
+        # in some property like xsh:appliesToProperty or xsh:appliesToConstraint.
+        OPTIONAL {{ ?rule xsh:appliesToProperty <{property_uri}>. }}
+        OPTIONAL {{ ?rule xsh:appliesToConstraint <{constraint_uri}>. }}
+        # For a textual description, we assume either rdfs:comment or xsh:description
+        OPTIONAL {{ ?rule rdfs:comment ?comment. }}
+        }}
+        """
+
+        results = self.shapes_graph.query(query)
+        
+        domain_rules = []
+        for row in results:
+            # row["rule"] is the URI of the rule, row["comment"] might be None
+            rule_uri_str = str(row["rule"])
+            comment_str = row["comment"]
+            if comment_str:
+                domain_rules.append(f"{rule_uri_str}: {comment_str}")
+            else:
+                domain_rules.append(rule_uri_str)
+
+        return domain_rules
+

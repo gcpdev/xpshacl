@@ -6,18 +6,15 @@ about constraint violations for building explanations.
 """
 
 import re
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import List, Optional, Tuple
 import logging
-from rdflib import Graph, URIRef, Literal, BNode, Namespace
-from rdflib.namespace import RDF, RDFS, SH, XSD
+from rdflib import Graph, URIRef, Namespace
+from rdflib.namespace import RDF, RDFS, SH
 from pyshacl import validate
 
 from xshacl_architecture import (
     ConstraintViolation,
     ViolationType,
-    NodeId,
-    ConstraintId,
-    ShapeId,
 )
 
 logger = logging.getLogger("xshacl.validator")
@@ -312,7 +309,7 @@ class ExtendedShaclValidator:
         if severity:
             violation.severity = severity.fragment
 
-        # Try to get actual count for cardinality violations
+        # Try getting actual count for cardinality violations
         if violation.violation_type == ViolationType.CARDINALITY:
             count = next(validation_graph.objects(result, SH.value), None)
             if count:

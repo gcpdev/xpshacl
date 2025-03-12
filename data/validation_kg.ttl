@@ -1,7 +1,82 @@
 @prefix ns1: <http://xschacl.org/#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix xsh: <http://example.org/xsh#> .
+@prefix xsh: <http://xshacl.org/#> .
+@prefix xsh1: <http://example.org/xsh#> .
+
+xsh1:constraintComponent a owl:DatatypeProperty ;
+    rdfs:label "constraint component" ;
+    rdfs:domain xsh1:ViolationSignature ;
+    rdfs:range rdfs:Literal .
+
+xsh1:constraintParams a owl:DatatypeProperty ;
+    rdfs:label "constraint parameters" ;
+    rdfs:domain xsh1:ViolationSignature ;
+    rdfs:range rdfs:Literal .
+
+xsh1:correctionSuggestions a owl:DatatypeProperty ;
+    rdfs:label "correction suggestions" ;
+    rdfs:domain xsh1:Explanation ;
+    rdfs:range rdfs:Literal .
+
+xsh1:hasExplanation a owl:ObjectProperty ;
+    rdfs:label "has explanation" ;
+    rdfs:domain xsh1:ViolationSignature ;
+    rdfs:range xsh1:Explanation .
+
+xsh1:naturalLanguageText a owl:DatatypeProperty ;
+    rdfs:label "natural language text" ;
+    rdfs:domain xsh1:Explanation ;
+    rdfs:range rdfs:Literal .
+
+xsh1:propertyPath a owl:DatatypeProperty ;
+    rdfs:label "property path" ;
+    rdfs:domain xsh1:ViolationSignature ;
+    rdfs:range rdfs:Literal .
+
+xsh1:violationType a owl:DatatypeProperty ;
+    rdfs:label "violation type" ;
+    rdfs:domain xsh1:ViolationSignature ;
+    rdfs:range rdfs:Literal .
+
+ns1:sig_3595d8950adba9a9156fded0bf7c65e3 a ns1:ViolationSignature ;
+    ns1:constraintComponent "http://www.w3.org/ns/shacl#MinCountConstraintComponent" ;
+    ns1:constraintParams "{\"minCount\": \"1\"}" ;
+    ns1:hasExplanation ns1:sig_3595d8950adba9a9156fded0bf7c65e3_explanation ;
+    ns1:propertyPath "http://example.org/hasName" ;
+    ns1:violationType "ViolationType.CARDINALITY" .
+
+ns1:sig_90e52421697d5c3b3c0bfdfd7a81bd7e a ns1:ViolationSignature ;
+    ns1:constraintComponent "http://www.w3.org/ns/shacl#MaxInclusiveConstraintComponent" ;
+    ns1:hasExplanation ns1:sig_90e52421697d5c3b3c0bfdfd7a81bd7e_explanation ;
+    ns1:propertyPath "http://example.org/hasAge" ;
+    ns1:violationType "ViolationType.VALUE_RANGE" .
+
+ns1:sig_9ce4f5a8f2e29e2120cf4940c6e93a00 a ns1:ViolationSignature ;
+    ns1:constraintComponent "http://www.w3.org/ns/shacl#MinCountConstraintComponent" ;
+    ns1:constraintParams "{\"minCount\": \"1\"}" ;
+    ns1:hasExplanation ns1:sig_9ce4f5a8f2e29e2120cf4940c6e93a00_explanation ;
+    ns1:propertyPath "http://example.org/foundedOn" ;
+    ns1:violationType "ViolationType.CARDINALITY" .
+
+ns1:sig_c39533c4f314690924f9486a11f75c2d a ns1:ViolationSignature ;
+    ns1:constraintComponent "http://www.w3.org/ns/shacl#MinInclusiveConstraintComponent" ;
+    ns1:hasExplanation ns1:sig_c39533c4f314690924f9486a11f75c2d_explanation ;
+    ns1:propertyPath "http://example.org/hasAge" ;
+    ns1:violationType "ViolationType.VALUE_RANGE" .
+
+xsh:appliesToConstraint a owl:ObjectProperty ;
+    rdfs:label "applies to constraint" ;
+    rdfs:comment "Indicates which constraint component this domain rule addresses (e.g., sh:MinCountConstraintComponent)." ;
+    rdfs:domain xsh:DomainRule ;
+    rdfs:range rdfs:Resource .
+
+xsh:appliesToProperty a owl:ObjectProperty ;
+    rdfs:label "applies to property" ;
+    rdfs:comment "Indicates which RDF property this domain rule addresses." ;
+    rdfs:domain xsh:DomainRule ;
+    rdfs:range rdf:Property .
 
 xsh:constraintComponent a owl:DatatypeProperty ;
     rdfs:label "constraint component" ;
@@ -33,29 +108,16 @@ xsh:propertyPath a owl:DatatypeProperty ;
     rdfs:domain xsh:ViolationSignature ;
     rdfs:range rdfs:Literal .
 
+xsh:ruleDescription a owl:DatatypeProperty ;
+    rdfs:label "rule description" ;
+    rdfs:comment "A human-readable description of this domain rule." ;
+    rdfs:domain xsh:DomainRule ;
+    rdfs:range rdfs:Literal .
+
 xsh:violationType a owl:DatatypeProperty ;
     rdfs:label "violation type" ;
     rdfs:domain xsh:ViolationSignature ;
     rdfs:range rdfs:Literal .
-
-ns1:sig_3595d8950adba9a9156fded0bf7c65e3 a ns1:ViolationSignature ;
-    ns1:constraintComponent "http://www.w3.org/ns/shacl#MinCountConstraintComponent" ;
-    ns1:constraintParams "{\"minCount\": \"1\"}" ;
-    ns1:hasExplanation ns1:sig_3595d8950adba9a9156fded0bf7c65e3_explanation ;
-    ns1:propertyPath "http://example.org/hasName" ;
-    ns1:violationType "ViolationType.CARDINALITY" .
-
-ns1:sig_90e52421697d5c3b3c0bfdfd7a81bd7e a ns1:ViolationSignature ;
-    ns1:constraintComponent "http://www.w3.org/ns/shacl#MaxInclusiveConstraintComponent" ;
-    ns1:hasExplanation ns1:sig_90e52421697d5c3b3c0bfdfd7a81bd7e_explanation ;
-    ns1:propertyPath "http://example.org/hasAge" ;
-    ns1:violationType "ViolationType.VALUE_RANGE" .
-
-ns1:sig_c39533c4f314690924f9486a11f75c2d a ns1:ViolationSignature ;
-    ns1:constraintComponent "http://www.w3.org/ns/shacl#MinInclusiveConstraintComponent" ;
-    ns1:hasExplanation ns1:sig_c39533c4f314690924f9486a11f75c2d_explanation ;
-    ns1:propertyPath "http://example.org/hasAge" ;
-    ns1:violationType "ViolationType.VALUE_RANGE" .
 
 ns1:sig_3595d8950adba9a9156fded0bf7c65e3_explanation a ns1:Explanation ;
     ns1:correctionSuggestions """To resolve the SHACL violation of having less than 1 value for `ex:hasName`, you need to add a statement providing a name for `ex:resource1`. Here are two possible corrections:
@@ -88,6 +150,16 @@ Alternatively, you could set it to any value that is less than or equal to 150, 
 ```""" ;
     ns1:naturalLanguageText "The SHACL violation report indicates that the resource identified by `http://example.org/resource1` does not comply with the defined shape constraints. Specifically, it has a property `http://example.org/hasAge` with a value of `160`. However, the shape specifies that this value must be less than or equal to `150`. Therefore, since `160` exceeds this limit, the resource violates the maximum inclusive constraint defined in the shape `n50e9e0c21b6145318464be1c4e67c24fb2`." .
 
+ns1:sig_9ce4f5a8f2e29e2120cf4940c6e93a00_explanation a ns1:Explanation ;
+    ns1:correctionSuggestions """To resolve the SHACL violation of having less than 1 value for the property, you can take one of the following actions:
+
+1. **Add a Value**: Include at least one valid value for the property that is currently missing values.
+
+2. **Modify the SHACL Rule**: Adjust the SHACL constraint to allow for zero values if that is acceptable for your use case. 
+
+Choose the option that best fits your data requirements.""" ;
+    ns1:naturalLanguageText "The violation indicates that the specified resource is required to have at least one value for a particular property but currently has none. This is a cardinality violation where the minimum count constraint for the property is not met. The justification outlines that the resource fails to conform to the defined shape due to this lack of required values, noting that the property in question must have at least one associated value to comply with the constraints set by the shape definition." .
+
 ns1:sig_c39533c4f314690924f9486a11f75c2d_explanation a ns1:Explanation ;
     ns1:correctionSuggestions """To correct the SHACL violation, ensure that the value for `hasAge` is a non-negative integer. You can either:
 
@@ -99,9 +171,21 @@ ns1:sig_c39533c4f314690924f9486a11f75c2d_explanation a ns1:Explanation ;
 2. If the age can be negative, consider updating the SHACL shape to allow negative values, but that may not be valid depending on the context. Generally, use the first option.""" ;
     ns1:naturalLanguageText "The SHACL violation indicates that the resource identified by \"http://example.org/resource1\" has an age value of \"-10\", which is not allowed according to the defined constraints. Specifically, the constraint (shape) requires that the age must be a non-negative integer (>= 0). Since \"-10\" is less than 0, this violation occurs. The violation report identifies the problematic property (\"hasAge\") and highlights the constraint that it fails to meet, leading to the conclusion that the resource does not conform to the specified shape." .
 
+xsh1:Explanation a owl:Class ;
+    rdfs:label "Explanation" ;
+    rdfs:comment "Stores a formal and natural language explanation for a violation signature." .
+
+xsh:DomainRule a owl:Class ;
+    rdfs:label "Domain Rule" ;
+    rdfs:comment "Represents a domain-specific rule that further explains or clarifies constraints or property usage." .
+
 xsh:Explanation a owl:Class ;
     rdfs:label "Explanation" ;
     rdfs:comment "Stores a formal and natural language explanation for a violation signature." .
+
+xsh1:ViolationSignature a owl:Class ;
+    rdfs:label "Violation Signature" ;
+    rdfs:comment "Represents a canonical signature for a violation type." .
 
 xsh:ViolationSignature a owl:Class ;
     rdfs:label "Violation Signature" ;

@@ -4,6 +4,8 @@
 
 xSHACL is an explainable SHACL validation system designed to provide human-friendly, actionable explanations for SHACL constraint violations. Traditional SHACL validation engines often produce terse validation reports, making it difficult for users to understand why a violation occurred and how to fix it. This system addresses this issue by combining rule-based justification trees with retrieval-augmented generation (RAG) and large language models (LLMs) to produce detailed and understandable explanations.
 
+A key feature of xSHACL is its use of a **Violation Knowledge Graph (KG)**. This persistent graph stores previously encountered SHACL violation signatures along with their corresponding natural language explanations and correction suggestions. This caching mechanism enables xSHACL to efficiently reuse previously generated explanations, significantly improving performance and consistency.
+
 **Disclaimer:** xSHACL is an independent project and is **not affiliated with or related to any existing projects or initiatives using the name "SHACL-X" or similar variants.** Any perceived similarities are purely coincidental.
 
 ## Architecture
@@ -14,28 +16,53 @@ graph LR
     C[SHACL Shapes] --> B;
     B --> D{Violation?};
     D -- Yes --> E[Violation Details];
-    E --> F[Justification Tree Builder];
-    E --> G[Context Retriever];
-    F --> H[Justification Tree];
-    G --> I[Domain Context];
-    H --> J[Explanation Generator];
-    I --> J;
-    E --> J;
-    J --> K[Natural Language Explanation];
-    J --> L[Correction Suggestions];
-    D -- No --> M[Validation Success];
-    K --> N[User Interface];
-    L --> N;
-    E --> N;
-    H --> N;
-    I --> N;
-    M --> N;
+    E --> F[Violation Signature Factory];
+    F --> G{Violation Signature in KG?};
+    G -- Yes --> H[Explanation from KG];
+    G -- No --> I[Justification Tree Builder];
+    G -- No --> J[Context Retriever];
+    I --> K[Justification Tree];
+    J --> L[Domain Context];
+    K --> M[Explanation Generator];
+    L --> M;
+    E --> M;
+    M --> N[Natural Language Explanation];
+    M --> O[Correction Suggestions];
+    N --> P[KG Updater];
+    O --> P;
+    E --> P;
+    K --> P;
+    L --> P;
+    P --> Q[Violation Signature & Explanation];
+    Q --> R[Violation Knowledge Graph];
+    H --> S[User Interface];
+    N --> S;
+    O --> S;
+    E --> S;
+    K --> S;
+    L --> S;
+    D -- No --> T[Validation Success];
+    T --> S;
+    subgraph "Cached Path"
+        H
+    end
+    style H fill:#ccf,stroke:#333,stroke-width:2px
+    style Q fill:#fcc,stroke:#333,stroke-width:2px
+    style R fill:#fcc,stroke:#333,stroke-width:2px
+    subgraph "New Violation Path"
+        I
+        J
+        M
+        N
+        O
+    end
 ```
 
 ## Features
 
 * **Extended SHACL Validation:** Captures detailed information about constraint violations beyond standard validation reports.
 * **Justification Tree Construction:** Builds logical justification trees to explain the reasoning behind each violation.
+* **Restrictions KG:** Generates a restriction Knowledge Graph, caching similar violations and their natural language explanations / correction suggestions.
 * **Context Retrieval (RAG):** Retrieves relevant domain knowledge, including ontology fragments and shape documentation, to enrich explanations.
 * **Natural Language Generation (LLM):** Generates human-readable explanations and correction suggestions using large language models.
 * **Support to multiple LLMs:** To the moment, OpenAI, Google Gemini, and Anthropic's Claude models are supported via API. Any other models with API following the OpenAI standard can be quickly and easily extended.
@@ -63,9 +90,9 @@ graph LR
 2.  Create a virtual environment (recommended):
 
     ```bash
-    python3 -m venv venv
-    source venv/bin/activate  # On macOS and Linux
-    venv\Scripts\activate      # On Windows
+    python3 -m venv .venv
+    source .venv/bin/activate  # On macOS and Linux
+    .venv\Scripts\activate     # On Windows
     ```
 
 3.  Install the required dependencies:
@@ -74,7 +101,7 @@ graph LR
     pip install -r requirements.txt
     ```
 
-4.  Add a `.env` file to the root folder containing your API keys (won't be committed to any repo):
+4.  Add a `.env` file to the root folder containing your API keys (this won't be committed to any repo):
 
     ```bash
     OPENAI_API_KEY=xxxxxxxxx
@@ -162,7 +189,8 @@ graph LR
 xshacl/
 ├── data/
 │   ├── example_data.ttl
-│   └── example_shapes.ttl
+│   ├── example_shapes.ttl
+|   └── xshacl_ontology.ttl
 ├── logs/
 │   └── xshacl.log
 ├── src/

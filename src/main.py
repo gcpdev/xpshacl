@@ -72,7 +72,7 @@ def main():
         if violation_kg.has_violation(signature):
             explanation = violation_kg.get_explanation(signature)
         else:
-            explanation = explanation_generator.generate_explanation(
+            explanation = explanation_generator.generate_explanation_output(
                 violation, jt, context
             )
             # Store new explanation in KG

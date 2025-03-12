@@ -118,12 +118,12 @@ class DomainContext:
 
     ontology_fragments: List[str] = field(
         default_factory=list
-    )  # Relevant ontology snippets
+    )
     shape_documentation: List[str] = field(
         default_factory=list
-    )  # Documentation from shapes
-    similar_cases: List[Dict] = field(default_factory=list)  # Similar violation cases
-    domain_rules: List[str] = field(default_factory=list)  # Domain-specific rules
+    )
+    similar_cases: List[Dict] = field(default_factory=list) 
+    domain_rules: List[str] = field(default_factory=list)
 
 
 @dataclass

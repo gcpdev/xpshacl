@@ -107,7 +107,7 @@ class ViolationKnowledgeGraph:
         Add a new violation signature and explanation to the KG.
         No-op if it already exists.
         """
-        # If we already have it, do nothing or update the explanation
+        # If we already have it, do nothing nor update the explanation
         if self.has_violation(sig):
             return
         
@@ -145,8 +145,7 @@ class ViolationKnowledgeGraph:
                 Literal(explanation.natural_language_explanation)
             ))
         
-        # Store correction suggestions as a single text, or multiple
-        # For simplicity, join them or store just the first, etc.
+        # Store multiple correction suggestions as a single text
         if explanation.correction_suggestions:
             joined_suggestions = "\n".join(explanation.correction_suggestions)
             self.graph.add((
@@ -155,13 +154,11 @@ class ViolationKnowledgeGraph:
                 Literal(joined_suggestions)
             ))
         
-        # Optionally save after each addition, or save externally
         self.save_kg()
     
     def clear(self):
-        """Clear the in-memory graph. Be cautious about also clearing the TTL file."""
+        """Clear the in-memory graph."""
         self.graph = rdflib.Graph()
-        # Possibly also remove the file or override it
         self.save_kg()
     
     def size(self) -> int:

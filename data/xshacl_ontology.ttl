@@ -1,7 +1,7 @@
 @prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix owl:  <http://www.w3.org/2002/07/owl#> .
-@prefix xsh:  <http://example.org/xsh#> .
+@prefix xsh:  <http://xshacl.org/#> .
 
 # Classes
 xsh:ViolationSignature a owl:Class ;
@@ -11,6 +11,10 @@ xsh:ViolationSignature a owl:Class ;
 xsh:Explanation a owl:Class ;
     rdfs:label "Explanation" ;
     rdfs:comment "Stores a formal and natural language explanation for a violation signature." .
+
+xsh:DomainRule a owl:Class ;
+    rdfs:label "Domain Rule" ;
+    rdfs:comment "Represents a domain-specific rule that further explains or clarifies constraints or property usage." .
 
 # Object and data properties
 xsh:hasExplanation a owl:ObjectProperty ;
@@ -33,10 +37,7 @@ xsh:violationType a owl:DatatypeProperty ;
     rdfs:range rdfs:Literal ;
     rdfs:label "violation type" .
 
-# For constraint parameters, you might store them either as
-# multiple properties (like xsh:minCount, xsh:pattern, etc.)
-# or as a single property with a JSON string or blank nodes.
-# For brevity, here's an example single property:
+# For constraint parameters, we store as a single property with a JSON string:
 
 xsh:constraintParams a owl:DatatypeProperty ;
     rdfs:domain xsh:ViolationSignature ;
@@ -53,3 +54,21 @@ xsh:correctionSuggestions a owl:DatatypeProperty ;
     rdfs:domain xsh:Explanation ;
     rdfs:range rdfs:Literal ;
     rdfs:label "correction suggestions" .
+
+xsh:appliesToProperty a owl:ObjectProperty ;
+    rdfs:domain xsh:DomainRule ;
+    rdfs:range rdf:Property ;
+    rdfs:label "applies to property" ;
+    rdfs:comment "Indicates which RDF property this domain rule addresses." .
+
+xsh:appliesToConstraint a owl:ObjectProperty ;
+    rdfs:domain xsh:DomainRule ;
+    rdfs:range rdfs:Resource ;
+    rdfs:label "applies to constraint" ;
+    rdfs:comment "Indicates which constraint component this domain rule addresses (e.g., sh:MinCountConstraintComponent)." .
+
+xsh:ruleDescription a owl:DatatypeProperty ;
+    rdfs:domain xsh:DomainRule ;
+    rdfs:range rdfs:Literal ;
+    rdfs:label "rule description" ;
+    rdfs:comment "A human-readable description of this domain rule." .

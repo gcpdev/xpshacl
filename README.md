@@ -12,55 +12,27 @@ A key feature of xSHACL is its use of a **Violation Knowledge Graph (KG)**. This
 
 ```mermaid
 graph LR
-    A[RDF Data] --> B(Extended SHACL Validator);
+    A[RDF Data] --> B(xSHACL Validator);
     C[SHACL Shapes] --> B;
     B --> D{Violation?};
-    D -- Yes --> E[Violation Details];
-    E --> F[Violation Signature Factory];
-    F --> G{Violation Signature in KG?};
-    G -- Yes --> H[Explanation from KG];
-    G -- No --> I[Justification Tree Builder];
-    G -- No --> J[Context Retriever];
-    I --> K[Justification Tree];
-    J --> L[Domain Context];
-    K --> M[Explanation Generator];
-    L --> M;
-    E --> M;
-    M --> N[Natural Language Explanation];
-    M --> O[Correction Suggestions];
-    N --> P[KG Updater];
-    O --> P;
-    E --> P;
-    K --> P;
-    L --> P;
-    P --> Q[Violation Signature & Explanation];
-    Q --> R[Violation Knowledge Graph];
-    H --> S[User Interface];
-    N --> S;
-    O --> S;
-    E --> S;
-    K --> S;
-    L --> S;
-    D -- No --> T[Validation Success];
-    T --> S;
+    D -- Yes --> E{Violation Signature in KG?};
+    E -- Yes --> F[Explanation from KG];
+    E -- No --> G[Explanation Generator];
+    G --> I[KG Updater];
+    I --> H[Explained Output];
+    F --> H;
+    D -- No --> K[Validation Success];
     subgraph "Cached Path"
-        H
+        F
     end
-    style H fill:#ccf,stroke:#333,stroke-width:2px
-    style Q fill:#fcc,stroke:#333,stroke-width:2px
-    style R fill:#fcc,stroke:#333,stroke-width:2px
-    subgraph "New Violation Path"
-        I
-        J
-        M
-        N
-        O
-    end
+    style F fill:#ccf,stroke:#333,stroke-width:2px
+    style H fill:#fcc,stroke:#333,stroke-width:2px
+    style I fill:#fcc,stroke:#333,stroke-width:2px
 ```
 
 ## Features
 
-* **Extended SHACL Validation:** Captures detailed information about constraint violations beyond standard validation reports.
+* **Explainable SHACL Validation:** Captures detailed information about constraint violations beyond standard validation reports.
 * **Justification Tree Construction:** Builds logical justification trees to explain the reasoning behind each violation.
 * **Restrictions KG:** Generates a restriction Knowledge Graph, caching similar violations and their natural language explanations / correction suggestions.
 * **Context Retrieval (RAG):** Retrieves relevant domain knowledge, including ontology fragments and shape documentation, to enrich explanations.

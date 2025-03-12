@@ -82,7 +82,7 @@ def main():
 
     # Output explanations
     for explanation in explanations:
-        print(json.dumps(explanation.to_dict(), indent=2))
+        print(json.dumps(explanation.to_dict(), indent=2, default=str))
 
 
 if __name__ == "__main__":

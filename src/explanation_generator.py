@@ -13,6 +13,7 @@ from xshacl_architecture import (
     JustificationTree,
     DomainContext,
     ExplanationOutput,
+    ViolationType,
 )
 from context_retriever import ContextRetriever
 from extended_shacl_validator import ExtendedShaclValidator
@@ -44,22 +45,23 @@ suggestions_prompt = """INSTRUCTIONS:
         Be short and straight to the point, and do include suggestions to fix only what was reported as violation."
         """
 
+
 class ExplanationGenerator:
     """Generates natural language explanations using an LLM"""
 
     def __init__(self, model_name: str = "gpt-4o-mini-2024-07-18"):
         self.model_name = model_name
-        if("gpt" in model_name):
+        if "gpt" in model_name:
             openai.api_key = os.getenv("OPENAI_API_KEY")
             openai.base_url = "https://api.openai.com/v1/"
             if not openai.api_key:
                 raise ValueError("OPENAI_API_KEY environment variable not set.")
-        elif("gemini" in model_name):
+        elif "gemini" in model_name:
             openai.api_key = os.getenv("GEMINI_API_KEY")
             openai.base_url = "https://generativelanguage.googleapis.com/v1beta/openai/"
             if not openai.api_key:
                 raise ValueError("GEMINI_API_KEY environment variable not set.")
-        elif("claude" in model_name):
+        elif "claude" in model_name:
             openai.api_key = os.getenv("ANTHROPIC_API_KEY")
             openai.base_url = "https://api.anthropic.com/v1/"
             if not openai.api_key:
@@ -75,8 +77,10 @@ class ExplanationGenerator:
         Internal helper that calls the OpenAI Chat Completion and returns a raw string.
         """
         prompt = f"Explain the following SHACL violation: {violation.message or 'Unknown violation'}. "
-        prompt += f"Justification: {json.dumps(justification_tree.to_dict(), indent=2)}. "
-        prompt += f"Relevant context: {json.dumps(context.__dict__, indent=2)}. "
+        prompt += f"Justification: {json.dumps(justification_tree.to_dict(), indent=2, default=str)}. "
+        prompt += (
+            f"Relevant context: {json.dumps(context.__dict__, indent=2, default=str)}. "
+        )
         prompt += explanations_prompt
 
         try:
@@ -117,10 +121,12 @@ class ExplanationGenerator:
         context: DomainContext,
     ) -> ExplanationOutput:
         """
-        Public method that returns an ExplanationOutput object, 
+        Public method that returns an ExplanationOutput object,
         packaging the text from the LLM into the correct fields.
         """
-        explanation_text = self._generate_explanation_text(violation, justification_tree, context)
+        explanation_text = self._generate_explanation_text(
+            violation, justification_tree, context
+        )
         suggestions = self._generate_correction_suggestions_text(violation, context)
 
         return ExplanationOutput(
@@ -131,10 +137,17 @@ class ExplanationGenerator:
             correction_suggestions=suggestions,
         )
 
+
 class ExplainableShaclSystem:
     """Combines all components to provide explainable SHACL validation"""
 
-    def __init__(self, data_graph: Graph, shapes_graph: Graph, inference: str = "none", model: str = "gpt-4o-mini-2024-07-18"):
+    def __init__(
+        self,
+        data_graph: Graph,
+        shapes_graph: Graph,
+        inference: str = "none",
+        model: str = "gpt-4o-mini-2024-07-18",
+    ):
         self.validator = ExtendedShaclValidator(shapes_graph, inference)
         self.justification_builder = JustificationTreeBuilder(data_graph, shapes_graph)
         self.context_retriever = ContextRetriever(data_graph, shapes_graph)
@@ -186,18 +199,18 @@ class LocalExplanationGenerator:
         """Generates a natural language explanation for a violation using Ollama"""
 
         prompt = f"Explain the following SHACL violation: {violation.message or 'Unknown violation'}. "
+        prompt += f"Justification: {json.dumps(justification_tree.to_dict(), indent=2, default=str)}. "
         prompt += (
-            f"Justification: {json.dumps(justification_tree.to_dict(), indent=2)}. "
+            f"Relevant context: {json.dumps(context.__dict__, indent=2, default=str)}. "
         )
-        prompt += f"Relevant context: {json.dumps(context.__dict__, indent=2)}. "
         prompt += explanations_prompt
 
         response = ollama.chat(
             model=self.model_name, messages=[{"role": "user", "content": prompt}]
         )
         if self.model_name == "gemma:2b":
-            if ''.join(response["message"]["content"].split("\n")[1:]) != '':
-                return ''.join(response["message"]["content"].split("\n")[1:])
+            if "".join(response["message"]["content"].split("\n")[1:]) != "":
+                return "".join(response["message"]["content"].split("\n")[1:])
         return response["message"]["content"]
 
     def generate_correction_suggestions(
@@ -205,11 +218,12 @@ class LocalExplanationGenerator:
     ) -> List[str]:
         """Generates correction suggestions for a violation using Ollama"""
         prompt = f"Given the following SHACL violation: {violation.message or 'Unknown violation'}. "
-        prompt += f"Relevant context: {json.dumps(context.__dict__, indent=2)}. "
+        prompt += (
+            f"Relevant context: {json.dumps(context.__dict__, indent=2, default=str)}. "
+        )
         prompt += suggestions_prompt
 
         response = ollama.chat(
             model=self.model_name, messages=[{"role": "user", "content": prompt}]
         )
         return [response["message"]["content"]]
-

@@ -1,74 +1,79 @@
-@prefix rdf:  <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix owl:  <http://www.w3.org/2002/07/owl#> .
-@prefix xsh:  <http://xshacl.org/#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix xsh: <http://xshacl.org/#> .
 
-# Classes
+# Classes for xSHACL
 xsh:ViolationSignature a owl:Class ;
-    rdfs:label "Violation Signature" ;
-    rdfs:comment "Represents a canonical signature for a violation type." .
+    rdfs:label "ViolationSignature" ;
+    rdfs:comment "Represents a unique signature for a SHACL violation, independent of the specific instance data." .
 
 xsh:Explanation a owl:Class ;
-    rdfs:label "Explanation" ;
-    rdfs:comment "Stores a formal and natural language explanation for a violation signature." .
+    rdfs:label "Explanation" ;    
+    rdfs:comment "Stores human-readable explanations and suggestions for a SHACL violation." .
 
 xsh:DomainRule a owl:Class ;
-    rdfs:label "Domain Rule" ;
-    rdfs:comment "Represents a domain-specific rule that further explains or clarifies constraints or property usage." .
+    rdfs:label "DomainRule" ;
+    rdfs:comment "Represents a domain-specific rule that helps to further explain the constraints." .
 
-# Object and data properties
+# Object Properties
 xsh:hasExplanation a owl:ObjectProperty ;
+    rdfs:label "hasExplanation" ;
+    rdfs:comment "Links a ViolationSignature to its Explanation." ;
     rdfs:domain xsh:ViolationSignature ;
-    rdfs:range xsh:Explanation ;
-    rdfs:label "has explanation" .
-
-xsh:constraintComponent a owl:DatatypeProperty ;
-    rdfs:domain xsh:ViolationSignature ;
-    rdfs:range rdfs:Literal ;
-    rdfs:label "constraint component" .
-
-xsh:propertyPath a owl:DatatypeProperty ;
-    rdfs:domain xsh:ViolationSignature ;
-    rdfs:range rdfs:Literal ;
-    rdfs:label "property path" .
-
-xsh:violationType a owl:DatatypeProperty ;
-    rdfs:domain xsh:ViolationSignature ;
-    rdfs:range rdfs:Literal ;
-    rdfs:label "violation type" .
-
-# For constraint parameters, we store as a single property with a JSON string:
-
-xsh:constraintParams a owl:DatatypeProperty ;
-    rdfs:domain xsh:ViolationSignature ;
-    rdfs:range rdfs:Literal ;
-    rdfs:label "constraint parameters" .
-
-# Explanation output fields
-xsh:naturalLanguageText a owl:DatatypeProperty ;
-    rdfs:domain xsh:Explanation ;
-    rdfs:range rdfs:Literal ;
-    rdfs:label "natural language text" .
-
-xsh:correctionSuggestions a owl:DatatypeProperty ;
-    rdfs:domain xsh:Explanation ;
-    rdfs:range rdfs:Literal ;
-    rdfs:label "correction suggestions" .
+    rdfs:range xsh:Explanation .
 
 xsh:appliesToProperty a owl:ObjectProperty ;
+    rdfs:label "appliesToProperty" ;
+    rdfs:comment "Indicates which RDF property a DomainRule is applicable to." ;
     rdfs:domain xsh:DomainRule ;
-    rdfs:range rdf:Property ;
-    rdfs:label "applies to property" ;
-    rdfs:comment "Indicates which RDF property this domain rule addresses." .
+    rdfs:range rdf:Property .
 
 xsh:appliesToConstraint a owl:ObjectProperty ;
+    rdfs:label "appliesToConstraint" ;
+    rdfs:comment "Indicates which SHACL constraint a DomainRule is applicable to." ;
     rdfs:domain xsh:DomainRule ;
-    rdfs:range rdfs:Resource ;
-    rdfs:label "applies to constraint" ;
-    rdfs:comment "Indicates which constraint component this domain rule addresses (e.g., sh:MinCountConstraintComponent)." .
+    rdfs:range rdfs:Resource .
 
-xsh:ruleDescription a owl:DatatypeProperty ;
+# Data Properties
+xsh:constraintComponent a owl:DatatypeProperty ;
+    rdfs:label "constraintComponent" ;
+    rdfs:comment "Identifies the specific SHACL constraint component (e.g., sh:MinCountConstraintComponent)." ;
+    rdfs:domain xsh:ViolationSignature ;
+    rdfs:range rdfs:Literal .
+
+xsh:propertyPath a owl:DatatypeProperty ;
+    rdfs:label "propertyPath" ;
+    rdfs:comment "The SHACL property path that the violation relates to." ;
+    rdfs:domain xsh:ViolationSignature ;
+    rdfs:range rdfs:Literal .
+
+xsh:violationType a owl:DatatypeProperty ;
+    rdfs:label "violationType" ;
+    rdfs:comment "The type of SHACL violation (e.g., Cardinality, ValueType)." ;
+    rdfs:domain xsh:ViolationSignature ;
+    rdfs:range rdfs:Literal .
+
+xsh:constraintParams a owl:DatatypeProperty ;
+    rdfs:label "constraintParams" ;
+    rdfs:comment "Parameters that specify the nature of the violation." ;
+    rdfs:domain xsh:ViolationSignature ;
+    rdfs:range rdfs:Literal .
+    
+xsh:naturalLanguageText a owl:DatatypeProperty ;    
+    rdfs:label "naturalLanguageText" ;
+    rdfs:comment "The human-readable explanation for the violation." ;
+    rdfs:domain xsh:Explanation ;
+    rdfs:range rdfs:Literal .
+    
+xsh:correctionSuggestions a owl:DatatypeProperty ;    
+    rdfs:label "correctionSuggestions" ;
+    rdfs:comment "Suggestions to correct the violation." ;
+    rdfs:domain xsh:Explanation ;
+    rdfs:range rdfs:Literal .
+    
+xsh:ruleDescription a owl:DatatypeProperty ;    
+    rdfs:label "ruleDescription" ;
+    rdfs:comment "A human-readable description of a DomainRule." ;
     rdfs:domain xsh:DomainRule ;
-    rdfs:range rdfs:Literal ;
-    rdfs:label "rule description" ;
-    rdfs:comment "A human-readable description of this domain rule." .
+    rdfs:range rdfs:Literal .

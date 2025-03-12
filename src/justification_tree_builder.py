@@ -148,7 +148,7 @@ class JustificationTreeBuilder:
 
             # Add reasoning
             reasoning = (
-                f"Since {actual_count} < {min_count}, the node violates the minimum cardinality "
+                f"Since {actual_count} < at least {min_count}, the node violates the minimum cardinality "
                 f"constraint of the shape"
             )
             root.add_child(JustificationNode(statement=reasoning, type="inference"))
@@ -179,7 +179,7 @@ class JustificationTreeBuilder:
 
             # Add reasoning
             reasoning = (
-                f"Since {actual_count} > {max_count}, the node violates the maximum cardinality "
+                f"Since {actual_count} > at most {max_count}, the node violates the maximum cardinality "
                 f"constraint of the shape"
             )
             root.add_child(JustificationNode(statement=reasoning, type="inference"))
@@ -290,19 +290,331 @@ class JustificationTreeBuilder:
                 (URIRef(violation.shape_id), SH.minExclusive, None)
             ):
                 min_value = str(o)
-
             if min_value:
-                reasoning = f"The value {value} is not greater than {min_value}"
+                reasoning = f"The value provided does not comply with the minimum value restriction {min_value}"
                 root.add_child(JustificationNode(statement=reasoning, type="inference"))
         elif "MinInclusiveConstraintComponent" in violation.constraint_id:
             min_value = None
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.minInclusive, None)
+            ):
+                min_value = str(o)
+            if min_value:
+                reasoning = f"The value provided does not comply with the minimum value restriction {min_value}"
+                root.add_child(JustificationNode(statement=reasoning, type="inference"))
+        elif "MaxExclusiveConstraintComponent" in violation.constraint_id:
+            max_value = None
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.maxExclusive, None)
+            ):
+                max_value = str(o)
+
+            if max_value:
+                reasoning = f"The value provided does not comply with the maximum value restriction {max_value}"
+                root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+        elif "MaxInclusiveConstraintComponent" in violation.constraint_id:
+            max_value = None
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.maxInclusive, None)
+            ):
+                max_value = str(o)
+
+            if max_value:
+                reasoning = f"The value provided does not comply with the maximum value restriction {max_value}"
+                root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+    def _build_pattern_justification(
+        self, violation: ConstraintViolation, root: JustificationNode
+    ) -> None:
+        """Build justification for a pattern constraint violation"""
+        # Add shape requirement premise
+        shape_constraint = self._get_shape_constraint_text(violation)
+        root.add_child(
+            JustificationNode(
+                statement=shape_constraint,
+                type="premise",
+                evidence=f"From shape definition: {violation.shape_id}",
+            )
+        )
+
+        # Extract values if possible
+        focus_node = violation.focus_node
+        property_path = violation.property_path
+        value = violation.value
+        pattern = ""
+
+        # Add actual data observation
+        if property_path and value:
+            data_statement = (
+                f"The data shows that node {self._format_uri(focus_node)} has value {value} for property {self._format_uri(property_path)}."
+            )
+
+            root.add_child(
+                JustificationNode(
+                    statement=data_statement,
+                    type="observation",
+                    evidence=self._generate_data_evidence(focus_node, property_path),
+                )
+            )
+        # Add specific reasoning based on the constraint type
+        if "PatternConstraintComponent" in violation.constraint_id:
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.pattern, None)
+            ):
+                pattern = str(o)
+            if pattern:
+                reasoning = f"The value provided does not comply with the pattern {pattern}."
+                root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+            #Add flag information if present
+            flags = None
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.flags, None)
+            ):
+                flags = str(o)
+            if flags:
+                reasoning = f"The pattern uses flags {flags}."
+                root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+
+    def _build_property_pair_justification(
+        self, violation: ConstraintViolation, root: JustificationNode
+    ) -> None:
+        """Build justification for a property pair constraint violation"""
+        # Add shape requirement premise
+        shape_constraint = self._get_shape_constraint_text(violation)
+        root.add_child(
+            JustificationNode(
+                statement=shape_constraint,
+                type="premise",
+                evidence=f"From shape definition: {violation.shape_id}",
+            )
+        )
+
+        # Extract values if possible
+        focus_node = violation.focus_node
+        property_path = violation.property_path
+        value = violation.value
+
+        # Add actual data observation
+        if property_path and value:
+            data_statement = (
+                f"The data shows that node {self._format_uri(focus_node)} has value {value} for property {self._format_uri(property_path)}."
+            )
+
+            root.add_child(
+                JustificationNode(
+                    statement=data_statement,
+                    type="observation",
+                    evidence=self._generate_data_evidence(focus_node, property_path),
+                )
+            )
+        
+        if "EqualsConstraintComponent" in violation.constraint_id:
+            equals_property = None
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.equals, None)
+            ):
+                equals_property = str(o)
+            if equals_property:
+                reasoning = f"The shape states that property {self._format_uri(property_path)} must have the same values as {self._format_uri(equals_property)}."
+                root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+        elif "DisjointConstraintComponent" in violation.constraint_id:
+            disjoint_property = None
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.disjoint, None)
+            ):
+                disjoint_property = str(o)
+            if disjoint_property:
+                reasoning = f"The shape states that property {self._format_uri(property_path)} must not have any of the same values as {self._format_uri(disjoint_property)}."
+                root.add_child(JustificationNode(statement=reasoning, type="inference"))
+        
+        elif "LessThanConstraintComponent" in violation.constraint_id:
+            less_than_property = None
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.lessThan, None)
+            ):
+                less_than_property = str(o)
+            
+            if less_than_property:
+                #Retrieve all the values related to the two properties
+                less_than_values = [str(o) for s, p, o in self.data_graph.triples((URIRef(focus_node), URIRef(less_than_property), None))]
+                
+                if len(less_than_values)>0:
+                    reasoning = f"The shape states that the value of property {self._format_uri(property_path)} must be less than the values {less_than_values} of {self._format_uri(less_than_property)}."
+                else:
+                    reasoning = f"The shape states that the value of property {self._format_uri(property_path)} must be less than the value of {self._format_uri(less_than_property)} but no value was found for {self._format_uri(less_than_property)}."
+                root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+        elif "LessThanOrEqualsConstraintComponent" in violation.constraint_id:
+            less_or_equals_property = None
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.lessThanOrEquals, None)
+            ):
+                less_or_equals_property = str(o)
+
+            if less_or_equals_property:
+                #Retrieve all the values related to the two properties
+                less_than_or_equals_values = [str(o) for s, p, o in self.data_graph.triples((URIRef(focus_node), URIRef(less_or_equals_property), None))]
+                
+                if len(less_than_or_equals_values)>0:
+                    reasoning = f"The shape states that the value of property {self._format_uri(property_path)} must be less than or equals to the values {less_than_or_equals_values} of {self._format_uri(less_or_equals_property)}."
+                else:
+                    reasoning = f"The shape states that the value of property {self._format_uri(property_path)} must be less than or equals to the value of {self._format_uri(less_or_equals_property)} but no value was found for {self._format_uri(less_or_equals_property)}."
+                root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+        
+    def _build_property_pair_justification(
+        self, violation: ConstraintViolation, root: JustificationNode
+    ) -> None:
+        """Build justification for a property pair constraint violation"""
+        # Add shape requirement premise
+        shape_constraint = self._get_shape_constraint_text(violation)
+        root.add_child(
+            JustificationNode(
+                statement=shape_constraint,
+                type="premise",
+                evidence=f"From shape definition: {violation.shape_id}",
+            )
+        )
+
+        # Extract values if possible
+        focus_node = violation.focus_node
+        property_path = violation.property_path
+        value = violation.value
+
+        # Add actual data observation
+        if property_path and value:
+            data_statement = (
+                f"The data shows that node {self._format_uri(focus_node)} has value {value} for property {self._format_uri(property_path)}."
+            )
+
+            root.add_child(
+                JustificationNode(
+                    statement=data_statement,
+                    type="observation",
+                    evidence=self._generate_data_evidence(focus_node, property_path),
+                )
+            )
+        
+        if "EqualsConstraintComponent" in violation.constraint_id:
+            equals_property = None
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.equals, None)
+            ):
+                equals_property = str(o)
+            if equals_property:
+                reasoning = f"The shape states that property {self._format_uri(property_path)} must have the same values as {self._format_uri(equals_property)}."
+                root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+        elif "DisjointConstraintComponent" in violation.constraint_id:
+            disjoint_property = None
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.disjoint, None)
+            ):
+                disjoint_property = str(o)
+            if disjoint_property:
+                reasoning = f"The shape states that property {self._format_uri(property_path)} must not have any of the same values as {self._format_uri(disjoint_property)}."
+                root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+        elif "LessThanConstraintComponent" in violation.constraint_id:
+            less_than_property = None
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.lessThan, None)
+            ):
+                less_than_property = str(o)
+            if less_than_property:
+                reasoning = f"The shape states that the value of property {self._format_uri(property_path)} must be less than the value of {self._format_uri(less_than_property)}."
+                root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+        elif "LessThanOrEqualsConstraintComponent" in violation.constraint_id:
+            less_or_equals_property = None
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.lessThanOrEquals, None)
+            ):
+                less_or_equals_property = str(o)
+
+            if less_or_equals_property:
+                reasoning = f"The shape states that the value of property {self._format_uri(property_path)} must be less than or equal to the value of {self._format_uri(less_or_equals_property)}."
+                root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+
+    def _build_logical_justification(
+        self, violation: ConstraintViolation, root: JustificationNode
+    ) -> None:
+        """Build justification for a logical constraint violation"""
+        # Add shape requirement premise
+        shape_constraint = self._get_shape_constraint_text(violation)
+        root.add_child(
+            JustificationNode(
+                statement=shape_constraint,
+                type="premise",
+                evidence=f"From shape definition: {violation.shape_id}",
+            )
+        )
+
+        # Add specific reasoning based on the constraint type
+        if "NotConstraintComponent" in violation.constraint_id:
+            # Find the 'sh:not' shape that contains the nested violation
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.not_, None)
+            ):
+                not_shape_id = o
+
+            reasoning = f"The shape {self._format_uri(violation.shape_id)} includes a negation of the shape {self._format_uri(not_shape_id)}. This means that, for the resource to be valid, it cannot comply with the rules of the shape {self._format_uri(not_shape_id)}"
+            root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+        elif "AndConstraintComponent" in violation.constraint_id:
+            # Find the 'sh:and' shape that contains the list of shapes
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.and_, None)
+            ):
+                and_shape_list = o
+
+            reasoning = f"The shape {self._format_uri(violation.shape_id)} includes a conjunction of the shapes listed in {self._format_uri(and_shape_list)}. This means that, for the resource to be valid, it must comply with all rules of the shapes listed in {self._format_uri(and_shape_list)}"
+            root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+        elif "OrConstraintComponent" in violation.constraint_id:
+            # Find the 'sh:or' shape that contains the list of shapes
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.or_, None)
+            ):
+                or_shape_list = o
+
+            reasoning = f"The shape {self._format_uri(violation.shape_id)} includes a disjunction of the shapes listed in {self._format_uri(or_shape_list)}. This means that, for the resource to be valid, it must comply with at least one of the shapes listed in {self._format_uri(or_shape_list)}"
+            root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+        elif "XoneConstraintComponent" in violation.constraint_id:
+            # Find the 'sh:xone' shape that contains the list of shapes
+            for s, p, o in self.shapes_graph.triples(
+                (URIRef(violation.shape_id), SH.xone, None)
+            ):
+                xone_shape_list = o
+
+            reasoning = f"The shape {self._format_uri(violation.shape_id)} includes an exclusive disjunction of the shapes listed in {self._format_uri(xone_shape_list)}. This means that, for the resource to be valid, it must comply with exactly one of the shapes listed in {self._format_uri(xone_shape_list)}"
+            root.add_child(JustificationNode(statement=reasoning, type="inference"))
+
+
+    def _build_generic_justification(
+        self, violation: ConstraintViolation, root: JustificationNode
+    ) -> None:
+        """Build generic justification for an unknown violation type"""
+        root.add_child(
+            JustificationNode(
+                statement=f"Generic justification for violation: {violation.message or 'Unknown violation'}",
+                type="unknown",
+                evidence=None,
+            )
+        )
 
     def _format_uri(self, uri: str) -> str:
         """
         Formats a URI for human-readable output.
         """
         # Simple formatting - can be improved with prefix mappings, etc.
-        if uri.startswith("http://"):
+        if uri.startswith("http://") or uri.startswith("https://"):
             return f"<{uri}>"
         return uri
 
@@ -346,5 +658,16 @@ class JustificationTreeBuilder:
         property_uri = URIRef(property_path)
         
         for s, p, o in self.data_graph.triples((focus_uri, property_uri, None)):
+            evidence += f"{s.n3()} {p.n3()} {o.n3()} .\n"
+        return evidence
+    
+    def _generate_type_evidence(self, focus_node: NodeId) -> str:
+        """
+        Generates evidence about the type of a focus node from the data graph.
+        """
+        evidence = ""
+        focus_uri = URIRef(focus_node)
+        
+        for s, p, o in self.data_graph.triples((focus_uri, RDF.type, None)):
             evidence += f"{s.n3()} {p.n3()} {o.n3()} .\n"
         return evidence

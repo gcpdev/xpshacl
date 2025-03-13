@@ -163,18 +163,22 @@ xshacl/
 │   └── xshacl.log
 ├── src/
 │   ├── __init__.py
-│   ├── xshacl_architecture.py
-│   ├── extended_shacl_validator.py
-│   ├── justification_tree_builder.py
 │   ├── context_retriever.py
 │   ├── explanation_generator.py
-│   └── main.py
+│   ├── extended_shacl_validator.py
+│   ├── justification_tree_builder.py
+│   ├── main.py
+│   ├── violation_kg.py
+│   ├── violation_signature_factory.py
+│   ├── violation_signature.py
+│   └── xshacl_architecture.py
 ├── tests/
 │   ├── __init__.py
-│   ├── test_validator.py
-│   ├── test_justification.py
 │   ├── test_context_retriever.py
-│   └── test_explanation_generator.py
+│   ├── test_explanation_generator.py
+│   ├── test_extended_shacl_validator.py
+│   ├── test_justification_tree_builder.py
+│   └── test_violation_kg.py
 ├── requirements.txt
 ├── README.md
 ├── LICENSE

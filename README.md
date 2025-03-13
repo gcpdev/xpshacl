@@ -25,9 +25,9 @@ graph LR
     subgraph "Cached Path"
         F
     end
-    style F fill:#ccf,stroke:#333,stroke-width:2px
-    style H fill:#fcc,stroke:#333,stroke-width:2px
-    style I fill:#fcc,stroke:#333,stroke-width:2px
+    style F fill:#ccf,stroke:#333,stroke-width:2px,color:#fff
+    style H fill:#fcc,stroke:#333,stroke-width:2px,color:#fff
+    style I fill:#fcc,stroke:#333,stroke-width:2px,color:#fff
 ```
 
 ## Features

@@ -106,51 +106,47 @@ graph LR
 
 3.  The system will validate the RDF data and output detailed explanations for any violations in JSON format.
 
-### Example
+### Example output
 
 ```json
 {
-  "violation": {
-    "focus_node": "[http://example.org/resource/1](https://www.google.com/search?q=http://example.org/resource/1)",
-    "shape_id": "[http://example.org/shapes#PersonShape](https://www.google.com/search?q=http://example.org/shapes%23PersonShape)",
-    "constraint_id": "[http://www.w3.org/ns/shacl#MinCountConstraintComponent](https://www.google.com/search?q=http://www.w3.org/ns/shacl%23MinCountConstraintComponent)",
-    "violation_type": "CARDINALITY",
-    "property_path": "[http://example.org/property/hasName](https://www.google.com/search?q=http://example.org/property/hasName)",
-    "value": null,
-    "message": "Minimum cardinality 1 not met.",
-    "severity": "Violation"
-  },
+  "violation": "ConstraintViolation(focus_node='http://example.org/resource1', shape_id='nbcf05f9cfb1447809440b6ab69a8daf8b2', constraint_id='http://www.w3.org/ns/shacl#MinInclusiveConstraintComponent', violation_type=<ViolationType.VALUE_RANGE: 'value_range'>, property_path='http://example.org/hasAge', value='-20', message='Value is not >= Literal(\"0\", datatype=xsd:integer)', severity='Violation', context={})",
   "justification_tree": {
     "violation": {
-      "focus_node": "[http://example.org/resource/1](https://www.google.com/search?q=http://example.org/resource/1)",
-      "shape_id": "[http://example.org/shapes#PersonShape](https://www.google.com/search?q=http://example.org/shapes%23PersonShape)",
-      "constraint_id": "[http://www.w3.org/ns/shacl#MinCountConstraintComponent](https://www.google.com/search?q=http://www.w3.org/ns/shacl%23MinCountConstraintComponent)",
-      "violation_type": "CARDINALITY",
-      "property_path": "[http://example.org/property/hasName](https://www.google.com/search?q=http://example.org/property/hasName)",
-      "value": null,
-      "message": "Minimum cardinality 1 not met.",
-      "severity": "Violation"
+      "focus_node": "http://example.org/resource1",
+      "shape_id": "nbcf05f9cfb1447809440b6ab69a8daf8b2",
+      "constraint_id": "http://www.w3.org/ns/shacl#MinInclusiveConstraintComponent",
+      "violation_type": "ViolationType.VALUE_RANGE",
+      "property_path": "http://example.org/hasAge",
+      "value": "-20",
+      "message": "Value is not >= Literal(\"0\", datatype=xsd:integer)",
+      "severity": "Violation",
+      "context": {}
     },
     "justification": {
-      "statement": "The node [http://example.org/resource/1](https://www.google.com/search?q=http://example.org/resource/1) must have at least 1 value for the property [http://example.org/property/hasName](https://www.google.com/search?q=http://example.org/property/hasName).",
+      "statement": "Node <http://example.org/resource1> fails to conform to shape nbcf05f9cfb1447809440b6ab69a8daf8b2",
       "type": "conclusion",
       "evidence": null,
-      "children": []
+      "children": [
+        {
+          "statement": "The shape nbcf05f9cfb1447809440b6ab69a8daf8b2 has a constraint <http://www.w3.org/ns/shacl#MinInclusiveConstraintComponent>.",
+          "type": "premise",
+          "evidence": "From shape definition: nbcf05f9cfb1447809440b6ab69a8daf8b2",
+          "children": []
+        },
+        {
+          "statement": "The data shows that property <http://example.org/hasAge> of node <http://example.org/resource1> has value -20",
+          "type": "observation",
+          "evidence": "<http://example.org/resource1> <http://example.org/hasAge> \"-20\"^^<http://www.w3.org/2001/XMLSchema#integer> .\n",
+          "children": []
+        }
+      ]
     }
   },
-  "retrieved_context": {
-    "ontology_fragments": [
-      "[http://example.org/resource/1](https://www.google.com/search?q=http://example.org/resource/1) [http://example.org/property/hasAge](https://www.google.com/search?q=http://example.org/property/hasAge) \"30\"^^[http://www.w3.org/2001/XMLSchema#integer](https://www.google.com/search?q=http://www.w3.org/2001/XMLSchema%23integer) ."
-    ],
-    "shape_documentation": [
-      "This shape describes a Person."
-    ],
-    "similar_cases": [],
-    "domain_rules": []
-  },
-  "natural_language_explanation": "The resource [http://example.org/resource/1](https://www.google.com/search?q=http://example.org/resource/1) is missing a name. It should have at least one name.",
+  "retrieved_context": "DomainContext(ontology_fragments=['<http://example.org/resource1> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <http://example.org/Person>.', '<http://example.org/resource1> <http://example.org/hasAge> \"-20\"^^<http://www.w3.org/2001/XMLSchema#integer>.'], shape_documentation=[], similar_cases=['http://example.org/resource2'], domain_rules=[])",
+  "natural_language_explanation": "The node fails to conform to the specified shape because it contains a property that has been assigned a value that is less than the minimum allowed value. The shape enforces a constraint requiring that the property must be greater than or equal to zero, but the provided value is below this threshold. This results in a violation of the minimum inclusive constraint defined for that property.",
   "correction_suggestions": [
-    "Ensure the property has at least 1 values."
+    "1. Change the negative value of the property to a positive one to comply with the minimum value requirement.\n\n2. Alter your SHACL rule to allow for positive values, if you want to accept negative inputs.\n\n3. Ensure that the value assigned to the property is greater than or equal to the specified minimum limit. \n\n4. Review and correct the data entry to meet the defined constraints for the property."
   ]
 }
 ```

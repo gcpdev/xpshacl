@@ -60,7 +60,7 @@ class ContextRetriever:
 
     def _get_similar_cases(self, violation: ConstraintViolation) -> List[Dict]:
         """
-        Finds 'similar cases' in the data graph. For example, if the violation is 
+        Finds 'similar cases' in the data graph. For example, if the violation is
         that a node doesn't have 'ex:hasName', we look for other nodes of the same type
         that are also missing 'ex:hasName'.
 
@@ -70,7 +70,7 @@ class ContextRetriever:
         # 1. Identify the focus node type
         focus_node_uri = URIRef(violation.focus_node)
         property_path_uri = URIRef(violation.property_path)
-        
+
         # Query to find the type of the focus node:
         query_focus_type = f"""
         SELECT ?type
@@ -80,7 +80,7 @@ class ContextRetriever:
         """
         results_type = self.data_graph.query(query_focus_type)
         focus_node_types = [str(row["type"]) for row in results_type]
-        
+
         # 2. For each focus_node_type, find other nodes of the same type
         # that are also missing the same property.
         similar_nodes = set()
@@ -103,17 +103,12 @@ class ContextRetriever:
 
     def _get_domain_rules(self, violation: ConstraintViolation) -> list[str]:
         """
-        Returns a list of human-readable strings describing 'domain rules' 
+        Returns a list of human-readable strings describing 'domain rules'
         that relate to the property path or constraint type for the given violation.
-
-        Example assumption:
-        - There's a custom class xsh:DomainRule in the shapes graph.
-        - Each rule has something like xsh:appliesToProperty <propertyURI>.
-        - Each rule might have a textual description or comment.
         """
 
         property_uri = violation.property_path
-        constraint_uri = violation.constraint_id  
+        constraint_id = violation.constraint_id
 
         if not property_uri:
             return []
@@ -122,33 +117,25 @@ class ContextRetriever:
 
         query = f"""
         PREFIX rdfs: <{RDFS}>
-        PREFIX xsh: <{XSH}>
+        PREFIX xsh: <http://xshacl.org/#>
         PREFIX sh: <{SH}>
 
         SELECT DISTINCT ?rule ?comment
         WHERE {{
-        ?rule a xsh:DomainRule .
-
-        # Suppose domain rules either reference the property or the constraint
-        # in some property like xsh:appliesToProperty or xsh:appliesToConstraint.
-        OPTIONAL {{ ?rule xsh:appliesToProperty <{property_uri}>. }}
-        OPTIONAL {{ ?rule xsh:appliesToConstraint <{constraint_uri}>. }}
-        # For a textual description, we assume either rdfs:comment or xsh:description
-        OPTIONAL {{ ?rule rdfs:comment ?comment. }}
+            ?rule xsh:appliesToProperty <{property_uri}> .
+            OPTIONAL {{ ?rule rdfs:comment ?comment . }}
         }}
         """
 
         results = self.shapes_graph.query(query)
-        
+
         domain_rules = []
         for row in results:
-            # row["rule"] is the URI of the rule, row["comment"] might be None
             rule_uri_str = str(row["rule"])
-            comment_str = row["comment"]
+            comment_str = str(row["comment"]) if row["comment"] else None
             if comment_str:
                 domain_rules.append(f"{rule_uri_str}: {comment_str}")
             else:
                 domain_rules.append(rule_uri_str)
 
         return domain_rules
-

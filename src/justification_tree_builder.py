@@ -559,7 +559,7 @@ class JustificationTreeBuilder:
         if "NotConstraintComponent" in violation.constraint_id:
             # Find the 'sh:not' shape that contains the nested violation
             for s, p, o in self.shapes_graph.triples(
-                (URIRef(violation.shape_id), SH.not_, None)
+                (URIRef(violation.shape_id), SH.NotConstraintComponent, None)
             ):
                 not_shape_id = o
 
@@ -569,7 +569,7 @@ class JustificationTreeBuilder:
         elif "AndConstraintComponent" in violation.constraint_id:
             # Find the 'sh:and' shape that contains the list of shapes
             for s, p, o in self.shapes_graph.triples(
-                (URIRef(violation.shape_id), SH.and_, None)
+                (URIRef(violation.shape_id), SH.AndConstraintComponent, None)
             ):
                 and_shape_list = o
 
@@ -579,7 +579,7 @@ class JustificationTreeBuilder:
         elif "OrConstraintComponent" in violation.constraint_id:
             # Find the 'sh:or' shape that contains the list of shapes
             for s, p, o in self.shapes_graph.triples(
-                (URIRef(violation.shape_id), SH.or_, None)
+                (URIRef(violation.shape_id), SH.OrConstraintComponent, None)
             ):
                 or_shape_list = o
 
@@ -589,7 +589,7 @@ class JustificationTreeBuilder:
         elif "XoneConstraintComponent" in violation.constraint_id:
             # Find the 'sh:xone' shape that contains the list of shapes
             for s, p, o in self.shapes_graph.triples(
-                (URIRef(violation.shape_id), SH.xone, None)
+                (URIRef(violation.shape_id), SH.XoneConstraintComponent, None)
             ):
                 xone_shape_list = o
 

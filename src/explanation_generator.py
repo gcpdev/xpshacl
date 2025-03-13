@@ -89,7 +89,7 @@ class ExplanationGenerator:
                 messages=[{"role": "user", "content": prompt}],
             )
             return response.choices[0].message.content.strip()
-        except openai.APIError as e:
+        except Exception as e:
             logger.error(f"OpenAI API error: {e}")
             return f"Error generating explanation: {e}"
 

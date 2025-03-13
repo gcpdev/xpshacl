@@ -159,8 +159,6 @@ xshacl/
 │   ├── example_data.ttl
 │   ├── example_shapes.ttl
 |   └── xshacl_ontology.ttl
-├── logs/
-│   └── xshacl.log
 ├── src/
 │   ├── __init__.py
 │   ├── context_retriever.py

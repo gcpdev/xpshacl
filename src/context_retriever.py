@@ -42,7 +42,6 @@ class ContextRetriever:
     def _get_ontology_fragments(self, violation: ConstraintViolation) -> List[str]:
         """Retrieves relevant ontology fragments based on the violation"""
         fragments = []
-        # Example: Retrieve triples related to the focus node
         for s, p, o in self.data_graph.triples(
             (URIRef(violation.focus_node), None, None)
         ):

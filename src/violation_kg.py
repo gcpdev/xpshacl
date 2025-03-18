@@ -45,9 +45,6 @@ class ViolationKnowledgeGraph:
         #
         # For simplicity, let's just write everything for now.
         self.graph.serialize(destination=self.kg_path, format="turtle")
-
-    # ... the rest of your methods ...
-
     
     def load_kg(self):
         """Load the RDF graph from the TTL file (if it exists)."""
@@ -91,11 +88,9 @@ class ViolationKnowledgeGraph:
         if expl_uri is None:
             raise ValueError("No explanation found for signature in KG.")
         
-        # Get any fields you stored, e.g. naturalLanguageText, correctionSuggestions, etc.
         nlt = self.graph.value(subject=expl_uri, predicate=XSH.naturalLanguageText)
         cs = self.graph.value(subject=expl_uri, predicate=XSH.correctionSuggestions)
         
-        # You can store more fields (formal details, etc.) as needed
         # Return an ExplanationOutput object
         return ExplanationOutput(
             natural_language_explanation=str(nlt),

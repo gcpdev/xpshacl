@@ -19,7 +19,6 @@ from xshacl_architecture import (
 
 logger = logging.getLogger("xshacl.validator")
 
-# Define some useful SHACL namespaces
 SH = Namespace("http://www.w3.org/ns/shacl#")
 
 

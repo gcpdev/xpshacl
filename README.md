@@ -151,6 +151,41 @@ graph LR
 }
 ```
 
+## Generating Synthetic Data
+
+If you want more complex data exmaples to test xSHACL, you can generate synthetic RDF data and SHACL shapes using the provided Python scripts.
+
+1.  Navigate to the `data` directory:
+
+    ```bash
+    cd data
+    ```
+
+2.  Run the `synthetic_data_generator.py` script:
+
+    ```bash
+    python generate_complex_data.py
+    ```
+
+    This will generate two files: `complex_data.ttl` (the RDF data) and `complex_shapes.ttl` (the SHACL shapes).
+
+    **`synthetic_data_generator.py` Explanation:**
+
+    * Uses `rdflib` to create an RDF graph.
+    * Generates `ex:Resource` instances with properties like `ex:integerValue`, `ex:stringValue`, `ex:dateValue`, `ex:languageValue`, and `ex:listValue`.
+    * Introduces random violations to the data (e.g., invalid data types, missing properties).
+    * Serializes the graph to `complex_data.ttl` in Turtle format.
+    * Defines a shape `ex:ResourceShape` that targets `ex:Resource` instances.
+    * Includes various types of SHACL constraints:
+        * Datatype constraints (`sh:datatype`)
+        * Cardinality constraints (`sh:minCount`, `sh:maxCount`)
+        * String constraints (`sh:minLength`, `sh:maxLength`, `sh:pattern`)
+        * Language constraints (`sh:languageIn`)
+        * Node kind constraints (`sh:nodeKind`)
+        * Logical constraints (`sh:AndConstraintComponent`)
+        * SPARQL constraints (`sh:SPARQLConstraintComponent`)
+    * Serializes the shapes graph to `complex_shapes.ttl` in Turtle format.
+
 ## Project Structure
 
 ```
@@ -158,6 +193,7 @@ xshacl/
 ├── data/
 │   ├── example_data.ttl
 │   ├── example_shapes.ttl
+│   ├── synthetic_data_generator.py
 |   └── xshacl_ontology.ttl
 ├── src/
 │   ├── __init__.py

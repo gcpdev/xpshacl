@@ -1,0 +1,46 @@
+@prefix ex: <http://xshacl.org/#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+ex:ResourceShape a sh:NodeShape ;
+    sh:AndConstraintComponent ex:AndShape ;
+    sh:PropertyConstraintComponent ex:SparqlShape ;
+    sh:property ex:DatePropertyShape,
+        ex:IntegerPropertyShape,
+        ex:LanguagePropertyShape,
+        ex:ListPropertyShape,
+        ex:StringPropertyShape ;
+    sh:targetClass ex:Resource .
+
+ex:AndShape rdf:first ex:IntegerPropertyShape ;
+    rdf:rest ex:and_rest .
+
+ex:DatePropertyShape sh:datatype xsd:date ;
+    sh:path ex:dateValue .
+
+ex:LanguagePropertyShape sh:languageIn "en" ;
+    sh:path ex:languageValue .
+
+ex:ListPropertyShape sh:nodeKind sh:IRI ;
+    sh:path ex:listValue .
+
+ex:SparqlConstraint sh:SPARQLSelectExecutable "SELECT $this WHERE { FILTER ( ($this % 2) != 0 ) }" ;
+    sh:message "Integer value must be even." .
+
+ex:SparqlShape sh:ClassConstraintComponent ex:integerValue ;
+    sh:SPARQLConstraintComponent ex:SparqlConstraint .
+
+ex:and_rest rdf:first ex:StringPropertyShape ;
+    rdf:rest () .
+
+ex:IntegerPropertyShape sh:datatype xsd:integer ;
+    sh:maxInclusive 150 ;
+    sh:minInclusive 10 ;
+    sh:path ex:integerValue .
+
+ex:StringPropertyShape sh:maxLength 20 ;
+    sh:minLength 3 ;
+    sh:path ex:stringValue ;
+    sh:pattern "^[a-zA-Z]+$" .
+

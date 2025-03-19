@@ -68,7 +68,7 @@ class ContextRetriever:
 
         # 1. Identify the focus node type
         focus_node_uri = URIRef(violation.focus_node)
-        property_path_uri = URIRef(violation.property_path)
+        property_path_uri = URIRef(violation.property_path) if violation.property_path else None
 
         # Query to find the type of the focus node:
         query_focus_type = f"""

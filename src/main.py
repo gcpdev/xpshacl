@@ -1,6 +1,4 @@
-import argparse
-import json
-import logging
+import argparse, json, time, logging
 from rdflib import Graph
 
 from extended_shacl_validator import ExtendedShaclValidator
@@ -18,6 +16,8 @@ logging.basicConfig(
 logger = logging.getLogger("xshacl")
 
 def main():
+    start_time = time.time()  # Record the start time
+
     parser = argparse.ArgumentParser(description="xSHACL: Explainable SHACL Validation")
     parser.add_argument("--data", required=True, help="Path to the RDF data file")
     parser.add_argument("--shapes", required=True, help="Path to the SHACL shapes file")
@@ -83,6 +83,12 @@ def main():
     # Output explanations
     for explanation in explanations:
         print(json.dumps(explanation.to_dict(), indent=2, default=str))
+
+    end_time = time.time()  # Record the end time
+    elapsed_time = end_time - start_time  # Calculate the elapsed time
+
+    logger.info(f"Total execution time: {elapsed_time:.4f} seconds")  # Log the elapsed time
+    print(f"Total execution time: {elapsed_time:.4f} seconds")  # Print the elapsed time
 
 
 if __name__ == "__main__":

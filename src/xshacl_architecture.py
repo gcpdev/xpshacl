@@ -44,7 +44,40 @@ class ConstraintViolation:
     value: Optional[str] = None
     message: Optional[str] = None
     severity: Optional[str] = None
-    context: Dict = field(default_factory=dict)  
+    context: Dict = field(default_factory=dict)
+
+    def to_dict(self) -> Dict:
+        """Convert ConstraintViolation to a dictionary."""
+        return {
+            "focus_node": self.focus_node,
+            "shape_id": self.shape_id,
+            "constraint_id": self.constraint_id,
+            "violation_type": self.violation_type.value,  # Serialize Enum value
+            "property_path": self.property_path,
+            "value": self.value,
+            "message": self.message,
+            "severity": self.severity,
+            "context": self.context,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict):
+        """Create a ConstraintViolation from a dictionary."""
+        violation_type_value = data.get("violation_type")
+        violation_type = (
+            ViolationType(violation_type_value) if violation_type_value else None
+        )
+        return cls(
+            focus_node=data["focus_node"],
+            shape_id=data["shape_id"],
+            constraint_id=data["constraint_id"],
+            violation_type=violation_type,
+            property_path=data.get("property_path"),
+            value=data.get("value"),
+            message=data.get("message"),
+            severity=data.get("severity"),
+            context=data.get("context", {}),
+        )
 
 
 @dataclass
@@ -69,6 +102,21 @@ class JustificationNode:
             "children": [child.to_dict() for child in self.children],
         }
 
+    @classmethod
+    def from_dict(cls, data: Dict):
+        """Create a JustificationNode from a dictionary."""
+        return cls(
+            statement=data["statement"],
+            type=data["type"],
+            evidence=data.get("evidence"),
+            children=[
+                cls.from_dict(child)
+                for child in data.get(
+                    "children",
+                )
+            ],
+        )
+
 
 @dataclass
 class JustificationTree:
@@ -80,9 +128,17 @@ class JustificationTree:
     def to_dict(self) -> Dict:
         """Convert the entire tree to a dictionary"""
         return {
-            "violation": self.violation.__dict__,
+            "violation": self.violation.to_dict(),
             "justification": self.root.to_dict(),
         }
+
+    @classmethod
+    def from_dict(cls, data: Dict):
+        """Create a JustificationTree from a dictionary."""
+        return cls(
+            violation=ConstraintViolation.from_dict(data["violation"]),
+            justification=JustificationNode.from_dict(data["justification"]),
+        )
 
 
 @dataclass
@@ -96,6 +152,33 @@ class DomainContext:
     shape_documentation: List[str] = field(default_factory=list)
     similar_cases: List[Dict] = field(default_factory=list)
     domain_rules: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> Dict:
+        """Convert DomainContext to a dictionary."""
+        return {
+            "ontology_fragments": self.ontology_fragments,
+            "shape_documentation": self.shape_documentation,
+            "similar_cases": self.similar_cases,
+            "domain_rules": self.domain_rules,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict):
+        """Create a DomainContext from a dictionary."""
+        return cls(
+            ontology_fragments=data.get(
+                "ontology_fragments",
+            ),
+            shape_documentation=data.get(
+                "shape_documentation",
+            ),
+            similar_cases=data.get(
+                "similar_cases",
+            ),
+            domain_rules=data.get(
+                "domain_rules",
+            ),
+        )
 
 
 @dataclass
@@ -114,15 +197,38 @@ class ExplanationOutput:
     def to_dict(self) -> Dict:
         """Convert to a dictionary for JSON output"""
         return {
-            "violation": self.violation
-            if self.violation
-            else None,
-            "justification_tree": self.justification_tree.to_dict()
-            if self.justification_tree
-            else None,
-            "retrieved_context": self.retrieved_context
-            if self.retrieved_context
-            else None,
+            "violation": self.violation.to_dict() if self.violation else None,
+            "justification_tree": (
+                self.justification_tree.to_dict() if self.justification_tree else None
+            ),
+            "retrieved_context": (
+                self.retrieved_context.to_dict() if self.retrieved_context else None
+            ),
             "natural_language_explanation": self.natural_language_explanation,
             "correction_suggestions": self.correction_suggestions,
         }
+
+    @classmethod
+    def from_dict(cls, data: Dict):
+        """Create an ExplanationOutput from a dictionary."""
+        return cls(
+            natural_language_explanation=data["natural_language_explanation"],
+            correction_suggestions=data.get(
+                "correction_suggestions",
+            ),
+            violation=(
+                ConstraintViolation.from_dict(data["violation"])
+                if data.get("violation")
+                else None
+            ),
+            justification_tree=(
+                JustificationTree.from_dict(data["justification_tree"])
+                if data.get("justification_tree")
+                else None
+            ),
+            retrieved_context=(
+                DomainContext.from_dict(data["retrieved_context"])
+                if data.get("retrieved_context")
+                else None
+            ),
+        )

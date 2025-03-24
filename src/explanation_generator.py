@@ -135,6 +135,7 @@ class ExplanationGenerator:
             retrieved_context=context,
             natural_language_explanation=explanation_text,
             correction_suggestions=suggestions,
+            provided_by_model=self.model_name,
         )
 
 

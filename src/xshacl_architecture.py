@@ -193,6 +193,7 @@ class ExplanationOutput:
     violation: Optional[ConstraintViolation] = None
     justification_tree: Optional[JustificationTree] = None
     retrieved_context: Optional[DomainContext] = None
+    provided_by_model: Optional[str] = None
 
     def to_dict(self) -> Dict:
         """Convert to a dictionary for JSON output"""
@@ -206,6 +207,7 @@ class ExplanationOutput:
             ),
             "natural_language_explanation": self.natural_language_explanation,
             "correction_suggestions": self.correction_suggestions,
+            "provided_by_model": self.provided_by_model,
         }
 
     @classmethod
@@ -231,4 +233,5 @@ class ExplanationOutput:
                 if data.get("retrieved_context")
                 else None
             ),
+            provided_by_model=data["provided_by_model"],
         )

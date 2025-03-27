@@ -4,7 +4,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../s
 from rdflib import Graph, URIRef, Literal, Namespace
 from rdflib.namespace import SH
 from extended_shacl_validator import ExtendedShaclValidator
-from xshacl_architecture import ConstraintViolation, ViolationType
+from xpshacl_architecture import ConstraintViolation, ViolationType
 
 # language: python
 

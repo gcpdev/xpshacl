@@ -4,13 +4,13 @@ import sys, os, unittest, json
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 from justification_tree_builder import JustificationTreeBuilder
-from xshacl_architecture import (
+from xpshacl_architecture import (
     ConstraintViolation,
     ViolationType,
 )
 
 
-EX = Namespace("http://xshacl.org/#")
+EX = Namespace("http://xpshacl.org/#")
 
 
 class DummyViolation(ConstraintViolation):

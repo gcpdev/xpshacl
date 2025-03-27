@@ -12,12 +12,12 @@ from rdflib import Graph, URIRef, Namespace
 from rdflib.namespace import RDF, RDFS, SH
 from pyshacl import validate
 
-from xshacl_architecture import (
+from xpshacl_architecture import (
     ConstraintViolation,
     ViolationType,
 )
 
-logger = logging.getLogger("xshacl.validator")
+logger = logging.getLogger("xpshacl.validator")
 
 SH = Namespace("http://www.w3.org/ns/shacl#")
 

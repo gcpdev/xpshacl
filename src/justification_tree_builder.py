@@ -10,7 +10,7 @@ from typing import Dict
 from rdflib import Graph, URIRef, Namespace
 from rdflib.namespace import RDF, RDFS, SH
 
-from xshacl_architecture import (
+from xpshacl_architecture import (
     ConstraintViolation,
     JustificationNode,
     JustificationTree,
@@ -18,7 +18,7 @@ from xshacl_architecture import (
     NodeId,
 )
 
-logger = logging.getLogger("xshacl.justification")
+logger = logging.getLogger("xpshacl.justification")
 
 # Useful namespaces
 SCHEMA = Namespace("http://schema.org/")
@@ -346,9 +346,7 @@ class JustificationTreeBuilder:
 
         # Add actual data observation
         if property_path and value:
-            data_statement = (
-                f"The data shows that node {self._format_uri(focus_node)} has value {value} for property {self._format_uri(property_path)}."
-            )
+            data_statement = f"The data shows that node {self._format_uri(focus_node)} has value {value} for property {self._format_uri(property_path)}."
 
             root.add_child(
                 JustificationNode(
@@ -364,10 +362,12 @@ class JustificationTreeBuilder:
             ):
                 pattern = str(o)
             if pattern:
-                reasoning = f"The value provided does not comply with the pattern {pattern}."
+                reasoning = (
+                    f"The value provided does not comply with the pattern {pattern}."
+                )
                 root.add_child(JustificationNode(statement=reasoning, type="inference"))
 
-            #Add flag information if present
+            # Add flag information if present
             flags = None
             for s, p, o in self.shapes_graph.triples(
                 (URIRef(violation.shape_id), SH.flags, None)
@@ -376,7 +376,6 @@ class JustificationTreeBuilder:
             if flags:
                 reasoning = f"The pattern uses flags {flags}."
                 root.add_child(JustificationNode(statement=reasoning, type="inference"))
-
 
     def _build_property_pair_justification(
         self, violation: ConstraintViolation, root: JustificationNode
@@ -399,9 +398,7 @@ class JustificationTreeBuilder:
 
         # Add actual data observation
         if property_path and value:
-            data_statement = (
-                f"The data shows that node {self._format_uri(focus_node)} has value {value} for property {self._format_uri(property_path)}."
-            )
+            data_statement = f"The data shows that node {self._format_uri(focus_node)} has value {value} for property {self._format_uri(property_path)}."
 
             root.add_child(
                 JustificationNode(
@@ -410,7 +407,7 @@ class JustificationTreeBuilder:
                     evidence=self._generate_data_evidence(focus_node, property_path),
                 )
             )
-        
+
         if "EqualsConstraintComponent" in violation.constraint_id:
             equals_property = None
             for s, p, o in self.shapes_graph.triples(
@@ -430,19 +427,24 @@ class JustificationTreeBuilder:
             if disjoint_property:
                 reasoning = f"The shape states that property {self._format_uri(property_path)} must not have any of the same values as {self._format_uri(disjoint_property)}."
                 root.add_child(JustificationNode(statement=reasoning, type="inference"))
-        
+
         elif "LessThanConstraintComponent" in violation.constraint_id:
             less_than_property = None
             for s, p, o in self.shapes_graph.triples(
                 (URIRef(violation.shape_id), SH.lessThan, None)
             ):
                 less_than_property = str(o)
-            
+
             if less_than_property:
-                #Retrieve all the values related to the two properties
-                less_than_values = [str(o) for s, p, o in self.data_graph.triples((URIRef(focus_node), URIRef(less_than_property), None))]
-                
-                if len(less_than_values)>0:
+                # Retrieve all the values related to the two properties
+                less_than_values = [
+                    str(o)
+                    for s, p, o in self.data_graph.triples(
+                        (URIRef(focus_node), URIRef(less_than_property), None)
+                    )
+                ]
+
+                if len(less_than_values) > 0:
                     reasoning = f"The shape states that the value of property {self._format_uri(property_path)} must be less than the values {less_than_values} of {self._format_uri(less_than_property)}."
                 else:
                     reasoning = f"The shape states that the value of property {self._format_uri(property_path)} must be less than the value of {self._format_uri(less_than_property)} but no value was found for {self._format_uri(less_than_property)}."
@@ -456,16 +458,20 @@ class JustificationTreeBuilder:
                 less_or_equals_property = str(o)
 
             if less_or_equals_property:
-                #Retrieve all the values related to the two properties
-                less_than_or_equals_values = [str(o) for s, p, o in self.data_graph.triples((URIRef(focus_node), URIRef(less_or_equals_property), None))]
-                
-                if len(less_than_or_equals_values)>0:
+                # Retrieve all the values related to the two properties
+                less_than_or_equals_values = [
+                    str(o)
+                    for s, p, o in self.data_graph.triples(
+                        (URIRef(focus_node), URIRef(less_or_equals_property), None)
+                    )
+                ]
+
+                if len(less_than_or_equals_values) > 0:
                     reasoning = f"The shape states that the value of property {self._format_uri(property_path)} must be less than or equals to the values {less_than_or_equals_values} of {self._format_uri(less_or_equals_property)}."
                 else:
                     reasoning = f"The shape states that the value of property {self._format_uri(property_path)} must be less than or equals to the value of {self._format_uri(less_or_equals_property)} but no value was found for {self._format_uri(less_or_equals_property)}."
                 root.add_child(JustificationNode(statement=reasoning, type="inference"))
 
-        
     def _build_property_pair_justification(
         self, violation: ConstraintViolation, root: JustificationNode
     ) -> None:
@@ -487,9 +493,7 @@ class JustificationTreeBuilder:
 
         # Add actual data observation
         if property_path and value:
-            data_statement = (
-                f"The data shows that node {self._format_uri(focus_node)} has value {value} for property {self._format_uri(property_path)}."
-            )
+            data_statement = f"The data shows that node {self._format_uri(focus_node)} has value {value} for property {self._format_uri(property_path)}."
 
             root.add_child(
                 JustificationNode(
@@ -498,7 +502,7 @@ class JustificationTreeBuilder:
                     evidence=self._generate_data_evidence(focus_node, property_path),
                 )
             )
-        
+
         if "EqualsConstraintComponent" in violation.constraint_id:
             equals_property = None
             for s, p, o in self.shapes_graph.triples(
@@ -539,7 +543,6 @@ class JustificationTreeBuilder:
             if less_or_equals_property:
                 reasoning = f"The shape states that the value of property {self._format_uri(property_path)} must be less than or equal to the value of {self._format_uri(less_or_equals_property)}."
                 root.add_child(JustificationNode(statement=reasoning, type="inference"))
-
 
     def _build_logical_justification(
         self, violation: ConstraintViolation, root: JustificationNode
@@ -596,7 +599,6 @@ class JustificationTreeBuilder:
             reasoning = f"The shape {self._format_uri(violation.shape_id)} includes an exclusive disjunction of the shapes listed in {self._format_uri(xone_shape_list)}. This means that, for the resource to be valid, it must comply with exactly one of the shapes listed in {self._format_uri(xone_shape_list)}"
             root.add_child(JustificationNode(statement=reasoning, type="inference"))
 
-
     def _build_generic_justification(
         self, violation: ConstraintViolation, root: JustificationNode
     ) -> None:
@@ -636,7 +638,7 @@ class JustificationTreeBuilder:
             return f"The shape {self._format_uri(violation.shape_id)} has a constraint {self._format_uri(violation.constraint_id)} with value {constraint_value}."
         else:
             return f"The shape {self._format_uri(violation.shape_id)} has a constraint {self._format_uri(violation.constraint_id)}."
-    
+
     def _count_property_values(self, focus_node: NodeId, property_path: str) -> int:
         """
         Counts the number of values for a given property path of a focus node.
@@ -644,7 +646,7 @@ class JustificationTreeBuilder:
         count = 0
         focus_uri = URIRef(focus_node)
         property_uri = URIRef(property_path)
-        
+
         for s, p, o in self.data_graph.triples((focus_uri, property_uri, None)):
             count += 1
         return count
@@ -656,18 +658,18 @@ class JustificationTreeBuilder:
         evidence = ""
         focus_uri = URIRef(focus_node)
         property_uri = URIRef(property_path)
-        
+
         for s, p, o in self.data_graph.triples((focus_uri, property_uri, None)):
             evidence += f"{s.n3()} {p.n3()} {o.n3()} .\n"
         return evidence
-    
+
     def _generate_type_evidence(self, focus_node: NodeId) -> str:
         """
         Generates evidence about the type of a focus node from the data graph.
         """
         evidence = ""
         focus_uri = URIRef(focus_node)
-        
+
         for s, p, o in self.data_graph.triples((focus_uri, RDF.type, None)):
             evidence += f"{s.n3()} {p.n3()} {o.n3()} .\n"
         return evidence

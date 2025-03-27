@@ -5,7 +5,7 @@ from rdflib import Graph, URIRef, Literal
 from rdflib.namespace import RDF, RDFS
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
-from xshacl_architecture import ConstraintViolation, ShapeId, DomainContext
+from xpshacl_architecture import ConstraintViolation, ShapeId, DomainContext
 from context_retriever import ContextRetriever
 from rdflib import Namespace
 
@@ -15,7 +15,7 @@ class TestContextRetriever(unittest.TestCase):
     def setUp(self):
         self.data_graph = Graph()
         self.shapes_graph = Graph()
-        self.XSH = Namespace("http://xshacl.org/#")
+        self.XSH = Namespace("http://xpshacl.org/#")
 
         # Add sample data to the data graph
         self.data_graph.add(

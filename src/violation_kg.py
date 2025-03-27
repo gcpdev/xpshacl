@@ -1,10 +1,16 @@
 from typing import Dict, Set
 from dataclasses import dataclass, field
-from xshacl_architecture import ExplanationOutput, ConstraintViolation, JustificationTree, DomainContext, JustificationNode
+from xpshacl_architecture import (
+    ExplanationOutput,
+    ConstraintViolation,
+    JustificationTree,
+    DomainContext,
+    JustificationNode,
+)
 
 import logging, os
 
-logger = logging.getLogger("xshacl.violation_kg")
+logger = logging.getLogger("xpshacl.violation_kg")
 
 # violation_kg.py
 import rdflib
@@ -13,15 +19,16 @@ from rdflib.namespace import RDF, RDFS
 import json  # if you store constraint_params as JSON
 from typing import Optional
 
-from xshacl_architecture import ExplanationOutput
+from xpshacl_architecture import ExplanationOutput
 from violation_signature import ViolationSignature
 
-XSH = Namespace("http://xshacl.org/#")
+XSH = Namespace("http://xpshacl.org/#")
+
 
 class ViolationKnowledgeGraph:
     def __init__(
         self,
-        ontology_path: str = "data/xshacl_ontology.ttl",
+        ontology_path: str = "data/xpshacl_ontology.ttl",
         kg_path: str = "data/validation_kg.ttl",
     ):
         self.ontology_path = ontology_path
@@ -62,9 +69,7 @@ class ViolationKnowledgeGraph:
 
         # Build a canonical string from the essential fields
         sorted_params = sorted(sig.constraint_params.items())
-        signature_string = (
-            f"{sig.constraint_id}|{sig.property_path}|{sig.violation_type}|{sorted_params}"
-        )
+        signature_string = f"{sig.constraint_id}|{sig.property_path}|{sig.violation_type}|{sorted_params}"
         hex_digest = hashlib.md5(signature_string.encode("utf-8")).hexdigest()
 
         # Construct a URI under your xsh: namespace:
@@ -93,22 +98,38 @@ class ViolationKnowledgeGraph:
         cs = self.graph.value(subject=expl_uri, predicate=XSH.correctionSuggestions)
 
         # Retrieve provided_by_model
-        provided_by_model = self.graph.value(subject=expl_uri, predicate=XSH.providedByModel)
+        provided_by_model = self.graph.value(
+            subject=expl_uri, predicate=XSH.providedByModel
+        )
 
         # Retrieve JSON data and deserialize
         violation_data = self.graph.value(subject=expl_uri, predicate=XSH.violation)
-        justification_tree_data = self.graph.value(subject=expl_uri, predicate=XSH.justificationTree)
-        retrieved_context_data = self.graph.value(subject=expl_uri, predicate=XSH.retrievedContext)
+        justification_tree_data = self.graph.value(
+            subject=expl_uri, predicate=XSH.justificationTree
+        )
+        retrieved_context_data = self.graph.value(
+            subject=expl_uri, predicate=XSH.retrievedContext
+        )
 
-        violation = ConstraintViolation.from_dict(json.loads(str(violation_data))) if violation_data else None
+        violation = (
+            ConstraintViolation.from_dict(json.loads(str(violation_data)))
+            if violation_data
+            else None
+        )
 
         justification_tree = None
         if justification_tree_data:
             justification_tree_dict = json.loads(str(justification_tree_data))
-            root_node = JustificationNode.from_dict(justification_tree_dict["justification"])
+            root_node = JustificationNode.from_dict(
+                justification_tree_dict["justification"]
+            )
             justification_tree = JustificationTree(root=root_node, violation=violation)
 
-        retrieved_context = DomainContext.from_dict(json.loads(str(retrieved_context_data))) if retrieved_context_data else None
+        retrieved_context = (
+            DomainContext.from_dict(json.loads(str(retrieved_context_data)))
+            if retrieved_context_data
+            else None
+        )
 
         # Return an ExplanationOutput object
         return ExplanationOutput(
@@ -117,7 +138,9 @@ class ViolationKnowledgeGraph:
             violation=violation,
             justification_tree=justification_tree,
             retrieved_context=retrieved_context,
-            provided_by_model=str(provided_by_model) if provided_by_model else None # add this line
+            provided_by_model=(
+                str(provided_by_model) if provided_by_model else None
+            ),  # add this line
         )
 
     def add_violation(self, sig: ViolationSignature, explanation: ExplanationOutput):
@@ -149,13 +172,7 @@ class ViolationKnowledgeGraph:
         # Create explanation node
         expl_uri = URIRef(str(sig_uri) + "_explanation")
         self.graph.add((expl_uri, RDF.type, XSH.Explanation))
-        self.graph.add(
-            (
-                sig_uri,
-                XSH.hasExplanation,
-                expl_uri
-            )
-        )
+        self.graph.add((sig_uri, XSH.hasExplanation, expl_uri))
 
         # Store natural language text
         if explanation.natural_language_explanation:
@@ -163,7 +180,7 @@ class ViolationKnowledgeGraph:
                 (
                     expl_uri,
                     XSH.naturalLanguageText,
-                    Literal(explanation.natural_language_explanation)
+                    Literal(explanation.natural_language_explanation),
                 )
             )
 
@@ -171,29 +188,39 @@ class ViolationKnowledgeGraph:
         if explanation.correction_suggestions:
             joined_suggestions = "\n".join(explanation.correction_suggestions)
             self.graph.add(
-                (
-                    expl_uri,
-                    XSH.correctionSuggestions,
-                    Literal(joined_suggestions)
-                )
+                (expl_uri, XSH.correctionSuggestions, Literal(joined_suggestions))
             )
 
         if explanation.provided_by_model:
             self.graph.add(
-                (
-                    expl_uri,
-                    XSH.providedByModel,
-                    Literal(explanation.provided_by_model)
-                )
+                (expl_uri, XSH.providedByModel, Literal(explanation.provided_by_model))
             )
 
         # Store the complex data as JSON
         if explanation.violation:
-            self.graph.add((expl_uri, XSH.violation, Literal(json.dumps(explanation.violation.to_dict()))))
+            self.graph.add(
+                (
+                    expl_uri,
+                    XSH.violation,
+                    Literal(json.dumps(explanation.violation.to_dict())),
+                )
+            )
         if explanation.justification_tree:
-            self.graph.add((expl_uri, XSH.justificationTree, Literal(json.dumps(explanation.justification_tree.to_dict()))))
+            self.graph.add(
+                (
+                    expl_uri,
+                    XSH.justificationTree,
+                    Literal(json.dumps(explanation.justification_tree.to_dict())),
+                )
+            )
         if explanation.retrieved_context:
-            self.graph.add((expl_uri, XSH.retrievedContext, Literal(json.dumps(explanation.retrieved_context.to_dict()))))
+            self.graph.add(
+                (
+                    expl_uri,
+                    XSH.retrievedContext,
+                    Literal(json.dumps(explanation.retrieved_context.to_dict())),
+                )
+            )
 
         self.save_kg()
 

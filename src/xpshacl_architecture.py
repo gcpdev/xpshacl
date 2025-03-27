@@ -1,7 +1,7 @@
 """
-xSHACL Architecture
+xpSHACL Architecture
 --------------------
-This module defines the core data structures used throughout the xSHACL system,
+This module defines the core data structures used throughout the xpSHACL system,
 including constraint violations, justification trees, and context information.
 """
 
@@ -184,7 +184,7 @@ class DomainContext:
 @dataclass
 class ExplanationOutput:
     """
-    Represents the full output of the xSHACL explanation system for a
+    Represents the full output of the xpSHACL explanation system for a
     single violation.
     """
 

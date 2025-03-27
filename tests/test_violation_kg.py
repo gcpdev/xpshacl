@@ -5,7 +5,7 @@ from rdflib.namespace import RDF
 import sys, os, unittest, json
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
-from xshacl_architecture import ExplanationOutput
+from xpshacl_architecture import ExplanationOutput
 from violation_kg import ViolationKnowledgeGraph, XSH
 from violation_signature import ViolationSignature
 from unittest.mock import patch, mock_open

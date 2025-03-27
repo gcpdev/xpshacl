@@ -5,7 +5,7 @@ from extended_shacl_validator import ExtendedShaclValidator
 from justification_tree_builder import JustificationTreeBuilder
 from context_retriever import ContextRetriever
 from explanation_generator import ExplanationGenerator, LocalExplanationGenerator
-from xshacl_architecture import ExplanationOutput
+from xpshacl_architecture import ExplanationOutput
 from violation_kg import ViolationKnowledgeGraph
 from violation_signature_factory import create_violation_signature
 
@@ -13,12 +13,15 @@ from violation_signature_factory import create_violation_signature
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
-logger = logging.getLogger("xshacl")
+logger = logging.getLogger("xpshacl")
+
 
 def main():
     start_time = time.time()  # Record the start time
 
-    parser = argparse.ArgumentParser(description="xSHACL: Explainable SHACL Validation")
+    parser = argparse.ArgumentParser(
+        description="xpSHACL: Explainable SHACL Validation"
+    )
     parser.add_argument("--data", required=True, help="Path to the RDF data file")
     parser.add_argument("--shapes", required=True, help="Path to the SHACL shapes file")
     parser.add_argument("--local", action="store_true", help="Use local LLM (Ollama)")
@@ -67,7 +70,7 @@ def main():
         context = context_retriever.retrieve_context(violation)
         # 3. Generate signature
         signature = create_violation_signature(violation)
-        
+
         # 4. Check the KG cache
         if violation_kg.has_violation(signature):
             explanation = violation_kg.get_explanation(signature)
@@ -77,7 +80,7 @@ def main():
             )
             # Store new explanation in KG
             violation_kg.add_violation(signature, explanation)
-        
+
         explanations.append(explanation)
 
     # Output explanations
@@ -87,7 +90,9 @@ def main():
     end_time = time.time()  # Record the end time
     elapsed_time = end_time - start_time  # Calculate the elapsed time
 
-    logger.info(f"Total execution time: {elapsed_time:.4f} seconds")  # Log the elapsed time
+    logger.info(
+        f"Total execution time: {elapsed_time:.4f} seconds"
+    )  # Log the elapsed time
     print(f"Total execution time: {elapsed_time:.4f} seconds")  # Print the elapsed time
 
 

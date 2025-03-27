@@ -3,11 +3,12 @@ import sys, os, unittest, json
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../src")))
 from unittest.mock import patch
 from rdflib import Graph, URIRef, Literal, Namespace
-from xshacl_architecture import (
+from xpshacl_architecture import (
     ConstraintViolation,
     JustificationTree,
     JustificationNode,
     DomainContext,
+    ViolationType,
 )
 from explanation_generator import ExplanationGenerator
 from explanation_generator import explanations_prompt
@@ -37,7 +38,7 @@ class TestExplanationGenerator(unittest.TestCase):
             shape_id=URIRef("http://example.org/shape"),
             severity="violation",
             message="Test violation message",
-            violation_type="test",
+            violation_type=ViolationType.OTHER,
         )
         justification_tree = JustificationTree(
             JustificationNode("test", "test"), violation
@@ -87,7 +88,7 @@ class TestExplanationGenerator(unittest.TestCase):
             shape_id=URIRef("http://example.org/shape"),
             severity="violation",
             message=None,
-            violation_type="test",
+            violation_type=ViolationType.OTHER,
         )
         justification_tree = JustificationTree(
             JustificationNode("test", "test"), violation
@@ -127,7 +128,7 @@ class TestExplanationGenerator(unittest.TestCase):
             shape_id=URIRef("http://example.org/shape"),
             severity="violation",
             message="Test violation message",
-            violation_type="test",
+            violation_type=ViolationType.OTHER,
         )
         justification_tree = JustificationTree(
             JustificationNode("test", "test"), violation

@@ -6,7 +6,7 @@ from rdflib import Graph, URIRef, Namespace
 from rdflib.namespace import RDFS, SH
 from pyshacl import validate
 
-from xshacl_architecture import (
+from xpshacl_architecture import (
     ConstraintViolation,
     ShapeId,
     DomainContext,
@@ -16,7 +16,7 @@ from xshacl_architecture import (
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
-logger = logging.getLogger("xshacl")
+logger = logging.getLogger("xpshacl")
 
 # --- RAG Component for Context Retrieval ---
 
@@ -68,7 +68,9 @@ class ContextRetriever:
 
         # 1. Identify the focus node type
         focus_node_uri = URIRef(violation.focus_node)
-        property_path_uri = URIRef(violation.property_path) if violation.property_path else None
+        property_path_uri = (
+            URIRef(violation.property_path) if violation.property_path else None
+        )
 
         # Query to find the type of the focus node:
         query_focus_type = f"""
@@ -112,11 +114,11 @@ class ContextRetriever:
         if not property_uri:
             return []
 
-        XSH = Namespace("http://xshacl.org/#")
+        XSH = Namespace("http://xpshacl.org/#")
 
         query = f"""
         PREFIX rdfs: <{RDFS}>
-        PREFIX xsh: <http://xshacl.org/#>
+        PREFIX xsh: <http://xpshacl.org/#>
         PREFIX sh: <{SH}>
 
         SELECT DISTINCT ?rule ?comment

@@ -1,9 +1,9 @@
 @prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
 @prefix owl: <http://www.w3.org/2002/07/owl#> .
-@prefix xsh: <http://xshacl.org/#> .
+@prefix xsh: <http://xpshacl.org/#> .
 
-# Classes for xSHACL
+# Classes for xpSHACL
 xsh:ViolationSignature a owl:Class ;
     rdfs:label "ViolationSignature" ;
     rdfs:comment "Represents a unique signature for a SHACL violation, independent of the specific instance data." .

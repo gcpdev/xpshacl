@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from rdflib import Graph
 
-from xshacl_architecture import (
+from xpshacl_architecture import (
     ConstraintViolation,
     JustificationTree,
     DomainContext,
@@ -25,7 +25,7 @@ load_dotenv()
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
-logger = logging.getLogger("xshacl")
+logger = logging.getLogger("xpshacl")
 
 # --- LLM Integration for Natural Language Generation ---
 

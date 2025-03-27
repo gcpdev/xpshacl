@@ -1,45 +1,72 @@
-# xSHACL: Explainable SHACL Validation
+# xpSHACL: Explainable SHACL Validation
 
 ## Overview
 
-xSHACL is an explainable SHACL validation system designed to provide human-friendly, actionable explanations for SHACL constraint violations. Traditional SHACL validation engines often produce terse validation reports, making it difficult for users to understand why a violation occurred and how to fix it. This system addresses this issue by combining rule-based justification trees with retrieval-augmented generation (RAG) and large language models (LLMs) to produce detailed and understandable explanations.
+xpSHACL is an explainable SHACL validation system designed to provide human-friendly, actionable explanations for SHACL constraint violations. Traditional SHACL validation engines often produce terse validation reports, making it difficult for users to understand why a violation occurred and how to fix it. This system addresses this issue by combining rule-based justification trees with retrieval-augmented generation (RAG) and large language models (LLMs) to produce detailed and understandable explanations.
 
-A key feature of xSHACL is its use of a **Violation Knowledge Graph (KG)**. This persistent graph stores previously encountered SHACL violation signatures along with their corresponding natural language explanations and correction suggestions. This caching mechanism enables xSHACL to efficiently reuse previously generated explanations, significantly improving performance and consistency.
+A key feature of xpSHACL is its use of a **Violation Knowledge Graph (KG)**. This persistent graph stores previously encountered SHACL violation signatures along with their corresponding natural language explanations and correction suggestions. This caching mechanism enables xpSHACL to efficiently reuse previously generated explanations, significantly improving performance and consistency.
 
-**Disclaimer:** xSHACL is an independent project and is **not affiliated with or related to any existing projects or initiatives using the name "SHACL-X" or similar variants.** Any perceived similarities are purely coincidental.
+**Disclaimer:** xpSHACL is an independent project and is **not affiliated with or related to any existing projects or initiatives using the name "SHACL-X" or similar variants.** Any perceived similarities are purely coincidental.
 
 ## Architecture
 
 ```mermaid
+---
+config:
+  theme: neutral
+  layout: dagre
+  look: neo
+---
 graph LR
-    A[RDF Data] --> B(xSHACL Validator);
-    C[SHACL Shapes] --> B;
-    B --> D{Violation?};
-    D -- Yes --> E{Violation Signature in KG?};
-    E -- Yes --> F[Explanation from KG];
-    E -- No --> G[Explanation Generator];
-    G --> I[KG Updater];
-    I --> H[Explained Output];
-    F --> H;
-    D -- No --> K[Validation Success];
-    subgraph "Cached Path"
-        F
+    subgraph Inputs
+        A[RDF<br>Data]
+        B[SHACL<br>Shapes]
     end
-    style F fill:#ccf,stroke:#333,stroke-width:2px,color:#fff
-    style H fill:#fcc,stroke:#333,stroke-width:2px,color:#fff
-    style I fill:#fcc,stroke:#333,stroke-width:2px,color:#fff
+    subgraph xpSHACL System
+        V(Extended<br>SHACL<br>Validator)
+        JTB(Justification<br>Tree Builder)
+        CR(Context<br>Retriever)
+        KG[(Violation<br>KG)]
+        EG(Explanation<br>Generator /<br>LLM)
+    end
+    subgraph Outputs
+        S[Success<br>Report]
+        ExpOut[Explained<br>Violation]
+    end
+    A --> V
+    B --> V
+    V -- No Violation --> S
+    V -- Violation<br>Details --> JTB
+    V -- Violation<br>Details --> CR
+    V -- Violation<br>Signature --> KG
+    KG -- Cache<br>Hit --> ExpOut
+    KG -- Cache<br>Miss --> EG
+    JTB -- Justification<br>Tree --> EG
+    CR -- Retrieved<br>Context --> EG
+    EG -- Generated<br>Explanation --> KG
+    classDef input fill:#f9f,stroke:#333;
+    classDef system fill:#ccf,stroke:#333;
+    classDef kg fill:#9cf,stroke:#333;
+    classDef output fill:#cfc,stroke:#333;
+    classDef decision fill:#eee,stroke:#333;
+    class A,B input;
+    class V,JTB,CR,EG,UpdateKG system;
+    class KG kg;
+    class S,ExpOut output;
+    class KG_Check decision;
+
 ```
 
 ## Features
 
 * **Explainable SHACL Validation:** Captures detailed information about constraint violations beyond standard validation reports.
 * **Justification Tree Construction:** Builds logical justification trees to explain the reasoning behind each violation.
-* **Restrictions KG:** Generates a restriction Knowledge Graph, caching similar violations and their natural language explanations / correction suggestions.
+* **Violation KG:** Generates a violations Knowledge Graph, caching similar violations and their natural language explanations / correction suggestions.
 * **Context Retrieval (RAG):** Retrieves relevant domain knowledge, including ontology fragments and shape documentation, to enrich explanations.
 * **Natural Language Generation (LLM):** Generates human-readable explanations and correction suggestions using large language models.
 * **Support to multiple LLMs:** To the moment, OpenAI, Google Gemini, and Anthropic's Claude models are supported via API. Any other models with API following the OpenAI standard can be quickly and easily extended.
-* **Ollama Integration:** Enables local LLM usage for enhanced privacy and performance.
-* **Simple Interface:** Provides an easy-to-use interface to validate and explain RDF data.
+* **Ollama Integration:** Enables local LLM usage for enhanced privacy and performance with lower costs.
+* **Simple Interface:** Provides JSON outputs validating and explaining RDF data violations.
 * **Generalizability:** The underlying methodology is adaptable to other constraint languages.
 
 ## Getting Started
@@ -56,7 +83,7 @@ graph LR
 
     ```bash
     git clone <repository_url>
-    cd xshacl
+    cd xpshacl
     ```
 
 2.  Create a virtual environment (recommended):
@@ -147,13 +174,14 @@ graph LR
   "natural_language_explanation": "The node fails to conform to the specified shape because it contains a property that has been assigned a value that is less than the minimum allowed value. The shape enforces a constraint requiring that the property must be greater than or equal to zero, but the provided value is below this threshold. This results in a violation of the minimum inclusive constraint defined for that property.",
   "correction_suggestions": [
     "1. Change the negative value of the property to a positive one to comply with the minimum value requirement.\n\n2. Alter your SHACL rule to allow for positive values, if you want to accept negative inputs.\n\n3. Ensure that the value assigned to the property is greater than or equal to the specified minimum limit. \n\n4. Review and correct the data entry to meet the defined constraints for the property."
-  ]
+  ],
+  "provided_by_model" : "gpt-4o-mini-2024-07-18"
 }
 ```
 
 ## Generating Synthetic Data
 
-If you want more complex data exmaples to test xSHACL, you can generate synthetic RDF data and SHACL shapes using the provided Python scripts.
+If you want more complex data exmaples to test xpSHACL, you can generate synthetic RDF data and SHACL shapes using the provided Python scripts.
 
 1.  Navigate to the `data` directory:
 
@@ -189,12 +217,12 @@ If you want more complex data exmaples to test xSHACL, you can generate syntheti
 ## Project Structure
 
 ```
-xshacl/
+xpshacl/
 ├── data/
 │   ├── example_data.ttl
 │   ├── example_shapes.ttl
 │   ├── synthetic_data_generator.py
-|   └── xshacl_ontology.ttl
+|   └── xpshacl_ontology.ttl
 ├── src/
 │   ├── __init__.py
 │   ├── context_retriever.py
@@ -205,7 +233,7 @@ xshacl/
 │   ├── violation_kg.py
 │   ├── violation_signature_factory.py
 │   ├── violation_signature.py
-│   └── xshacl_architecture.py
+│   └── xpshacl_architecture.py
 ├── tests/
 │   ├── __init__.py
 │   ├── test_context_retriever.py
@@ -217,6 +245,14 @@ xshacl/
 ├── README.md
 ├── LICENSE
 ```
+
+## Run Unit Tests
+
+1. The unit tests can be run using:
+
+    ```bash
+    python -m unittest discover tests
+    ```
 
 ## Contributing
 

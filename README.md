@@ -108,12 +108,12 @@ graph LR
     ANTHROPIC_API_KEY=xxxxxxxxx
     ```
 
-5.  (Optional, for running locally) Install and run Ollama, and pull a model (e.g., `gemma:2b`):
+5.  (Optional, for running locally) Install and run Ollama, and pull a model (e.g., `gemma3:4b`):
 
     ```bash
     ollama pull gemma:2b
     ```
-    PS: `gemma:2b` is recommended due to its speed, but `llama3.3` could be used for better quality or even `deepseek-r1` for more complex shapes.
+    PS: `gemma3:4b` is recommended due to its speed, but `llama3.3` could be used for better quality or even `deepseek-r1` for more complex shapes.
 
 ### Usage
 

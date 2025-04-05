@@ -16,6 +16,7 @@ xsh:DomainRule a owl:Class ;
     rdfs:label "DomainRule" ;
     rdfs:comment "Represents a domain-specific rule that helps to further explain the constraints." .
 
+# Properties (using rdf:Property)
 xsh:hasExplanation a rdf:Property ;
     rdfs:label "hasExplanation" ;
     rdfs:comment "Links a ViolationSignature to its Explanation." ;
@@ -60,13 +61,13 @@ xsh:constraintParams a rdf:Property ;
 
 xsh:naturalLanguageText a rdf:Property ;
     rdfs:label "naturalLanguageText" ;
-    rdfs:comment "The human-readable explanation for the violation." ;
+    rdfs:comment "The human-readable explanation for the violation. Can have language tags (e.g., en, de)." ;
     rdfs:domain xsh:Explanation ;
     rdfs:range rdfs:Literal .
 
 xsh:correctionSuggestions a rdf:Property ;
     rdfs:label "correctionSuggestions" ;
-    rdfs:comment "Suggestions to correct the violation." ;
+    rdfs:comment "Suggestions to correct the violation. Can have language tags (e.g., en, de)." ;
     rdfs:domain xsh:Explanation ;
     rdfs:range rdfs:Literal .
 

@@ -70,7 +70,7 @@ class TestViolationKnowledgeGraph(unittest.TestCase):
         )
         explanation = ExplanationOutput(
             natural_language_explanation="Test explanation",
-            correction_suggestions=["Suggestion"],
+            correction_suggestions="Suggestion",
         )
 
         self.vkg.clear()
@@ -87,7 +87,7 @@ class TestViolationKnowledgeGraph(unittest.TestCase):
         )
         original_explanation = ExplanationOutput(
             natural_language_explanation="Test explanation",
-            correction_suggestions=["Suggestion"],
+            correction_suggestions="Suggestion",
         )
 
         self.vkg.clear()
@@ -100,7 +100,7 @@ class TestViolationKnowledgeGraph(unittest.TestCase):
         )
         self.assertEqual(
             retrieved_explanation.correction_suggestions,
-            original_explanation.correction_suggestions,
+            [original_explanation.correction_suggestions],
         )
 
     def test_signature_to_uri(self):

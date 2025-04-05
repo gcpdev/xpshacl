@@ -15,26 +15,30 @@ logging.basicConfig(
 )
 logger = logging.getLogger("xpshacl")
 
-
 def main():
     start_time = time.time()  # Record the start time
 
-    parser = argparse.ArgumentParser(
-        description="xpSHACL: Explainable SHACL Validation"
-    )
+    parser = argparse.ArgumentParser(description="xpSHACL: Explainable SHACL Validation")
     parser.add_argument("--data", required=True, help="Path to the RDF data file")
     parser.add_argument("--shapes", required=True, help="Path to the SHACL shapes file")
     parser.add_argument("--local", action="store_true", help="Use local LLM (Ollama)")
     parser.add_argument(
-        "--model", default="gpt2", help="Hugging Face model name (if not using --local)"
+        "--model", default="gpt-4o-mini-2024-07-18", help="Provider's API model name (if not using --local)"
     )
     parser.add_argument(
         "--inference",
         default="none",
         help="Inference option for SHACL validation (none, rdfs, owlrl, etc.)",
     )
+    parser.add_argument(
+        "--language",
+        default="en",
+        help="Language code (ISO-639-1) or comma-separated list of language codes for explanations (default: en)",
+    )
 
     args = parser.parse_args()
+
+    languages = [lang.strip() for lang in args.language.lower().split(',')]
 
     # Load data and shapes graphs
     try:
@@ -71,28 +75,43 @@ def main():
         # 3. Generate signature
         signature = create_violation_signature(violation)
 
-        # 4. Check the KG cache
-        if violation_kg.has_violation(signature):
-            explanation = violation_kg.get_explanation(signature)
-        else:
-            explanation = explanation_generator.generate_explanation_output(
-                violation, jt, context
-            )
-            # Store new explanation in KG
-            violation_kg.add_violation(signature, explanation)
+        # 4. Check the KG cache for each requested language
+        language_explanations = {}
+        for lang in languages:
+            cached_explanation = violation_kg.get_explanation(signature, lang)
+            if cached_explanation:
+                language_explanations[lang] = cached_explanation
 
-        explanations.append(explanation)
+        # 5. Generate missing explanations using the LLM
+        languages_to_generate = [lang for lang in languages if lang not in language_explanations]
+        if languages_to_generate:
+            llm_output = explanation_generator.generate_explanation_output(
+                violation, jt, context, languages_to_generate
+            )
+            # Store the generated explanations in the KG
+            for lang, (nlt, cs) in llm_output.items():
+                explanation = ExplanationOutput(
+                    natural_language_explanation=nlt,
+                    correction_suggestions=cs,
+                    violation=violation,
+                    justification_tree=jt,
+                    retrieved_context=context,
+                    provided_by_model=explanation_generator.model_name if not args.local else "local",
+                )
+                violation_kg.add_violation(signature, explanation, lang)
+                language_explanations[lang] = explanation
+
+        # Combine explanations for all requested languages
+        combined_explanation = {lang: language_explanations.get(lang).to_dict() for lang in languages}
+        explanations.append(combined_explanation)
 
     # Output explanations
-    for explanation in explanations:
-        print(json.dumps(explanation.to_dict(), indent=2, default=str))
+    print(json.dumps(explanations, indent=2, default=str))
 
     end_time = time.time()  # Record the end time
     elapsed_time = end_time - start_time  # Calculate the elapsed time
 
-    logger.info(
-        f"Total execution time: {elapsed_time:.4f} seconds"
-    )  # Log the elapsed time
+    logger.info(f"Total execution time: {elapsed_time:.4f} seconds")  # Log the elapsed time
     print(f"Total execution time: {elapsed_time:.4f} seconds")  # Print the elapsed time
 
 

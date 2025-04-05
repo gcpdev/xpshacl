@@ -60,6 +60,7 @@ graph LR
 ## Features
 
 * **Explainable SHACL Validation:** Captures detailed information about constraint violations beyond standard validation reports.
+* **Multi language output:** Provides the explanation and suggestions to fix them in multiple languages.
 * **Justification Tree Construction:** Builds logical justification trees to explain the reasoning behind each violation.
 * **Violation KG:** Generates a violations Knowledge Graph, caching similar violations and their natural language explanations / correction suggestions.
 * **Context Retrieval (RAG):** Retrieves relevant domain knowledge, including ontology fragments and shape documentation, to enrich explanations.
@@ -122,7 +123,7 @@ graph LR
 2.  Run the `main.py` script with your parameters, e.g.:
 
     ```bash
-    python src/main.py --data data/example_data.ttl --shapes data/example_shapes.ttl --model=gpt-4o-mini-2024-07-18
+    python src/main.py --data data/example_data.ttl --shapes data/example_shapes.ttl --model=gpt-4o-mini-2024-07-18 --language=en
     ```
 
     or to run with Ollama:
@@ -136,7 +137,7 @@ graph LR
 ### Example output
 
 ```json
-{
+en: {
   "violation": "ConstraintViolation(focus_node='http://example.org/resource1', shape_id='nbcf05f9cfb1447809440b6ab69a8daf8b2', constraint_id='http://www.w3.org/ns/shacl#MinInclusiveConstraintComponent', violation_type=<ViolationType.VALUE_RANGE: 'value_range'>, property_path='http://example.org/hasAge', value='-20', message='Value is not >= Literal(\"0\", datatype=xsd:integer)', severity='Violation', context={})",
   "justification_tree": {
     "violation": {

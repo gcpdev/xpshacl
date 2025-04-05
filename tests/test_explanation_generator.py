@@ -10,13 +10,20 @@ from xpshacl_architecture import (
     DomainContext,
     ViolationType,
 )
-from explanation_generator import ExplanationGenerator
-from explanation_generator import explanations_prompt
-from explanation_generator import explanations_prompt
+from explanation_generator import (
+    ExplanationGenerator,
+    explanations_prompt,
+)  # Corrected import, only need one
+
+# Define default language used in tests for clarity
+DEFAULT_TEST_LANGUAGE = "en"
 
 
 class TestExplanationGenerator(unittest.TestCase):
     def setUp(self):
+        # Make sure OPENAI_API_KEY is set for initialization, even if mocked later
+        # You might need to set a dummy value if it's not present during test runs
+        os.environ["OPENAI_API_KEY"] = "test_key"
         self.explanation_generator = ExplanationGenerator(model_name="test_model")
 
     @patch("explanation_generator.openai.chat.completions.create")
@@ -26,7 +33,7 @@ class TestExplanationGenerator(unittest.TestCase):
             type(
                 "obj",
                 (object,),
-                {"message": type("obj", (object,), {"content": "Test explanation"})},
+                {"message": type("obj", (object,), {"content": " Test explanation "})},
             )()
         ]
 
@@ -44,22 +51,23 @@ class TestExplanationGenerator(unittest.TestCase):
             JustificationNode("test", "test"), violation
         )
         context = DomainContext()
+        # Add some graph data to ensure json.dumps default=str handles them if needed
         context.data_graph = Graph()
         context.shapes_graph = Graph()
         context.focus_node_context = {}
         context.property_shape_context = {}
 
-        # Call the method
+        # Call the method (uses default language 'en')
         explanation = self.explanation_generator._generate_explanation_text(
             violation, justification_tree, context
         )
 
-        # Assert that the method returns the expected value
+        # Assert that the method returns the expected value (stripped)
         self.assertEqual(explanation, "Test explanation")
 
         # Assert that the OpenAI API was called with the correct parameters
         expected_prompt = (
-            f"Explain the following SHACL violation: Test violation message. "
+            f"Explain the following SHACL violation in {DEFAULT_TEST_LANGUAGE} (ISO 639-1 code): Test violation message. "
             f"Justification: {json.dumps(justification_tree.to_dict(), indent=2, default=str)}. "
             f"Relevant context: {json.dumps(context.__dict__, indent=2, default=str)}. "
         )
@@ -94,8 +102,11 @@ class TestExplanationGenerator(unittest.TestCase):
             JustificationNode("test", "test"), violation
         )
         context = DomainContext()
+        # Minimal context for this test
+        context.data_graph = Graph()
+        context.shapes_graph = Graph()
 
-        # Call the method
+        # Call the method (uses default language 'en')
         explanation = self.explanation_generator._generate_explanation_text(
             violation, justification_tree, context
         )
@@ -105,7 +116,7 @@ class TestExplanationGenerator(unittest.TestCase):
 
         # Assert that the OpenAI API was called with the correct parameters
         expected_prompt = (
-            f"Explain the following SHACL violation: Unknown violation. "
+            f"Explain the following SHACL violation in {DEFAULT_TEST_LANGUAGE} (ISO 639-1 code): Unknown violation. "
             f"Justification: {json.dumps(justification_tree.to_dict(), indent=2, default=str)}. "
             f"Relevant context: {json.dumps(context.__dict__, indent=2, default=str)}. "
         )
@@ -117,8 +128,9 @@ class TestExplanationGenerator(unittest.TestCase):
 
     @patch("explanation_generator.openai.chat.completions.create")
     def test_generate_explanation_text_api_error(self, mock_create):
-        # Mock the OpenAI API to raise an APIError
-        mock_create.side_effect = Exception("API Error")
+        # Mock the OpenAI API to raise an Exception (as caught in the method)
+        api_error_message = "API Error"
+        mock_create.side_effect = Exception(api_error_message)
 
         # Create dummy objects for the method parameters
         violation = ConstraintViolation(
@@ -134,11 +146,18 @@ class TestExplanationGenerator(unittest.TestCase):
             JustificationNode("test", "test"), violation
         )
         context = DomainContext()
+        context.data_graph = Graph()
+        context.shapes_graph = Graph()
 
-        # Call the method
+        # Call the method (uses default language 'en')
         explanation = self.explanation_generator._generate_explanation_text(
             violation, justification_tree, context
         )
 
         # Assert that the method returns the expected error message
-        self.assertEqual(explanation, "Error generating explanation: API Error")
+        expected_error_message = f"Error generating explanation in {DEFAULT_TEST_LANGUAGE}: {api_error_message}"
+        self.assertEqual(explanation, expected_error_message)
+
+
+if __name__ == "__main__":
+    unittest.main()

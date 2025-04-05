@@ -1,4 +1,9 @@
-from typing import Dict, Set
+import os
+import json
+import logging
+import hashlib 
+from typing import Dict, Set, Optional, List 
+
 from dataclasses import dataclass, field
 from xpshacl_architecture import (
     ExplanationOutput,
@@ -8,22 +13,18 @@ from xpshacl_architecture import (
     JustificationNode,
 )
 
-import logging, os
-
-logger = logging.getLogger("xpshacl.violation_kg")
-
-# violation_kg.py
 import rdflib
 from rdflib import Namespace, Graph, Literal, URIRef
 from rdflib.namespace import RDF, RDFS
-import json  # if you store constraint_params as JSON
-from typing import Optional
 
-from xpshacl_architecture import ExplanationOutput
-from violation_signature import ViolationSignature
+from violation_signature import ViolationSignature 
+
+logger = logging.getLogger("xpshacl.violation_kg")
 
 XSH = Namespace("http://xpshacl.org/#")
 
+# Define the separator used for joining/splitting suggestions
+SUGGESTION_SEPARATOR = "\n\n"
 
 class ViolationKnowledgeGraph:
     def __init__(
@@ -34,200 +35,269 @@ class ViolationKnowledgeGraph:
         self.ontology_path = ontology_path
         self.kg_path = kg_path
         self.graph = rdflib.Graph()
+        self.graph.bind("xsh", XSH)
 
-        # Load the ontology definitions (TBox)
-        self.graph.parse(self.ontology_path, format="turtle")
-
-        # If there's existing instance data, load it
+        # Load the ontology definitions (TBox) - improved loading
         try:
-            self.graph.parse(self.kg_path, format="turtle")
+             if os.path.exists(self.ontology_path):
+                 self.graph.parse(self.ontology_path, format="turtle")
+             else:
+                 logger.warning(f"Ontology file not found at {self.ontology_path}, skipping load.")
+        except Exception as e:
+            logger.error(f"Error parsing ontology file {self.ontology_path}: {e}")
+
+        # If there's existing instance data, load it - improved loading
+        try:
+            if os.path.exists(self.kg_path):
+                self.graph.parse(self.kg_path, format="turtle")
+            # No need for else, just pass if file doesn't exist
         except FileNotFoundError:
-            # If there's no existing KG file yet, skip
-            pass
+            pass # Expected if KG doesn't exist yet
+        except Exception as e:
+             logger.error(f"Error parsing KG file {self.kg_path}: {e}")
 
     def save_kg(self):
-        """Serialize the instance data (not rewriting the ontology)."""
-        # If we want to write out only new instance data, we have options:
-        # 1. Write out the entire merged graph (ontology + data)
-        # 2. Or separate the TBox from the ABox. This can get more complex.
-        #
-        # For simplicity, let's just write everything for now.
-        self.graph.serialize(destination=self.kg_path, format="turtle")
+        """Serialize the instance data."""
+        try:
+            # Ensure directory exists before saving
+            os.makedirs(os.path.dirname(self.kg_path), exist_ok=True)
+            self.graph.serialize(destination=self.kg_path, format="turtle")
+        except Exception as e:
+            logger.error(f"Failed to save KG to {self.kg_path}: {e}")
 
     def load_kg(self):
-        """Load the RDF graph from the TTL file (if it exists)."""
+        """Load the RDF graph from the TTL file (if it exists). Clears existing graph."""
         self.graph = rdflib.Graph()
-        self.graph.parse(self.kg_path, format="turtle")
+        self.graph.bind("xsh", XSH)
+        try:
+            if os.path.exists(self.ontology_path):
+                self.graph.parse(self.ontology_path, format="turtle")
+        except Exception as e:
+             logger.error(f"Error parsing ontology file {self.ontology_path} during load_kg: {e}")
+
+        # Load KG data
+        try:
+            if os.path.exists(self.kg_path):
+                self.graph.parse(self.kg_path, format="turtle")
+        except FileNotFoundError:
+            pass # It's okay if the KG file doesn't exist yet
+        except Exception as e:
+             logger.error(f"Error parsing KG file {self.kg_path} during load_kg: {e}")
+
 
     def signature_to_uri(self, sig: ViolationSignature) -> URIRef:
-        """
-        Create a stable URIRef for a given signature.
-        You can come up with your own hashing or naming scheme.
-        """
-        # A naive approach is to generate a short hash from the signature fields:
-        import hashlib
+        """Create a stable URIRef for a given signature."""
+        # Ensure constraint_params is treated consistently (dict or None)
+        params = sig.constraint_params if sig.constraint_params else {}
+        sorted_params = sorted(params.items())
+        # Ensure consistent handling of None for paths/types
+        property_path_str = str(sig.property_path) if sig.property_path else "None"
+        # Convert violation_type enum/object to string if necessary
+        violation_type_str = str(sig.violation_type) if sig.violation_type else "None"
 
-        # Build a canonical string from the essential fields
-        sorted_params = sorted(sig.constraint_params.items())
-        signature_string = f"{sig.constraint_id}|{sig.property_path}|{sig.violation_type}|{sorted_params}"
+        signature_string = (
+            f"{sig.constraint_id}|{property_path_str}|{violation_type_str}|{sorted_params}"
+        )
         hex_digest = hashlib.md5(signature_string.encode("utf-8")).hexdigest()
-
-        # Construct a URI under your xsh: namespace:
         return XSH[f"sig_{hex_digest}"]
 
-    def has_violation(self, sig: ViolationSignature) -> bool:
-        """
-        Check if a node in the KG exists with the same signature fields.
-        """
+    def has_violation(self, sig: ViolationSignature, language: str = "en") -> bool:
+        """Check if a node in the KG exists with the same signature and language."""
         sig_uri = self.signature_to_uri(sig)
-        return (sig_uri, RDF.type, XSH.ViolationSignature) in self.graph
 
-    def get_explanation(self, sig: ViolationSignature) -> ExplanationOutput:
+        # Check if the signature node itself exists
+        if not (sig_uri, RDF.type, XSH.ViolationSignature) in self.graph:
+            return False
+
+        # Find the linked Explanation node
+        expl_uri = self.graph.value(subject=sig_uri, predicate=XSH.hasExplanation)
+        if not expl_uri:
+            return False # Signature exists, but no linked explanation
+
+        # Check for the specific language explanation text by iterating
+        for obj in self.graph.objects(subject=expl_uri, predicate=XSH.naturalLanguageText):
+            if isinstance(obj, Literal) and obj.language == language:
+                return True # Found an explanation in the target language
+
+        return False # No explanation found for this specific language
+
+    def get_explanation(self, sig: ViolationSignature, language: str = "en") -> Optional[ExplanationOutput]:
         """
-        Retrieve the explanation from the KG for a given signature.
-        Here we assume the stored info is enough to reconstruct an ExplanationOutput.
+        Retrieve the explanation from the KG for a given signature and language.
+        Assumes suggestions are stored as a single combined literal per language.
         """
         sig_uri = self.signature_to_uri(sig)
 
         # Find the linked Explanation node
         expl_uri = self.graph.value(subject=sig_uri, predicate=XSH.hasExplanation)
         if expl_uri is None:
-            raise ValueError("No explanation found for signature in KG.")
+             logger.debug(f"No explanation URI found for signature {sig_uri}")
+             return None
 
-        nlt = self.graph.value(subject=expl_uri, predicate=XSH.naturalLanguageText)
-        cs = self.graph.value(subject=expl_uri, predicate=XSH.correctionSuggestions)
+        # Find language-specific natural language text by iterating
+        nlt_literal = None
+        for obj in self.graph.objects(subject=expl_uri, predicate=XSH.naturalLanguageText):
+             if isinstance(obj, Literal) and obj.language == language:
+                 nlt_literal = obj
+                 break # Found the one for the specific language
 
-        # Retrieve provided_by_model
-        provided_by_model = self.graph.value(
-            subject=expl_uri, predicate=XSH.providedByModel
-        )
+        # Find language-specific correction suggestions (single literal) by iterating
+        cs_combined: Optional[str] = None
+        for obj in self.graph.objects(subject=expl_uri, predicate=XSH.correctionSuggestions):
+            if isinstance(obj, Literal) and obj.language == language:
+                 cs_combined = str(obj)
+                 break # Found the combined suggestions for the specific language
 
-        # Retrieve JSON data and deserialize
+        # Split the combined suggestions string back into a list
+        cs: List[str] = cs_combined.split(SUGGESTION_SEPARATOR) if cs_combined else []
+
+        # If no natural language text was found for the specific language, consider it "not found"
+        if nlt_literal is None:
+            logger.debug(f"No natural language text found for lang='{language}' for explanation {expl_uri}")
+            return None
+
+        # Retrieve other potentially language-independent data
+        provided_by_model = self.graph.value(subject=expl_uri, predicate=XSH.providedByModel)
         violation_data = self.graph.value(subject=expl_uri, predicate=XSH.violation)
-        justification_tree_data = self.graph.value(
-            subject=expl_uri, predicate=XSH.justificationTree
-        )
-        retrieved_context_data = self.graph.value(
-            subject=expl_uri, predicate=XSH.retrievedContext
-        )
+        justification_tree_data = self.graph.value(subject=expl_uri, predicate=XSH.justificationTree)
+        retrieved_context_data = self.graph.value(subject=expl_uri, predicate=XSH.retrievedContext)
 
-        violation = (
-            ConstraintViolation.from_dict(json.loads(str(violation_data)))
-            if violation_data
-            else None
-        )
+        # Attempt to deserialize complex objects with error handling
+        violation = None
+        if violation_data:
+             try:
+                 violation = ConstraintViolation.from_dict(json.loads(str(violation_data)))
+             except Exception as e:
+                 logger.error(f"Failed to decode/instantiate ConstraintViolation for {expl_uri}: {e}")
 
         justification_tree = None
         if justification_tree_data:
-            justification_tree_dict = json.loads(str(justification_tree_data))
-            root_node = JustificationNode.from_dict(
-                justification_tree_dict["justification"]
-            )
-            justification_tree = JustificationTree(root=root_node, violation=violation)
+             try:
+                 justification_tree_dict = json.loads(str(justification_tree_data))
+                 temp_violation_for_tree = violation
+                 if not temp_violation_for_tree and "violation" in justification_tree_dict:
+                      try:
+                          temp_violation_for_tree = ConstraintViolation.from_dict(justification_tree_dict["violation"])
+                      except Exception: pass # Ignore if embedded violation fails
 
-        retrieved_context = (
-            DomainContext.from_dict(json.loads(str(retrieved_context_data)))
-            if retrieved_context_data
-            else None
-        )
+                 if "justification" in justification_tree_dict and temp_violation_for_tree:
+                     root_node = JustificationNode.from_dict(justification_tree_dict["justification"])
+                     justification_tree = JustificationTree(root=root_node, violation=temp_violation_for_tree)
+                 else:
+                      logger.warning(f"Could not reconstruct JustificationTree for {expl_uri}: Missing 'justification' key or associated violation.")
+             except Exception as e:
+                  logger.error(f"Failed to decode/instantiate JustificationTree for {expl_uri}: {e}")
 
-        # Return an ExplanationOutput object
+        retrieved_context = None
+        if retrieved_context_data:
+             try:
+                 # Assuming DomainContext.from_dict can handle the serialized format
+                 retrieved_context = DomainContext.from_dict(json.loads(str(retrieved_context_data)))
+             except Exception as e:
+                 logger.error(f"Failed to decode/instantiate DomainContext for {expl_uri}: {e}")
+
         return ExplanationOutput(
-            natural_language_explanation=str(nlt) if nlt else None,
-            correction_suggestions=[str(cs)] if cs else [],
+            natural_language_explanation=str(nlt_literal), # Convert literal to string
+            correction_suggestions=cs, # Use the list split from combined string
             violation=violation,
             justification_tree=justification_tree,
             retrieved_context=retrieved_context,
-            provided_by_model=(
-                str(provided_by_model) if provided_by_model else None
-            ),  # add this line
+            provided_by_model=str(provided_by_model) if provided_by_model else None
         )
 
-    def add_violation(self, sig: ViolationSignature, explanation: ExplanationOutput):
+    def add_violation(self, sig: ViolationSignature, explanation: ExplanationOutput, language: str = "en"):
         """
-        Add a new violation signature and explanation to the KG.
-        No-op if it already exists.
+        Add a new violation signature and explanation to the KG with a language tag.
+        Combines correction suggestions into a single literal per language.
+        Prevents adding duplicate language-tagged text/suggestions.
         """
-        # If we already have it, do nothing nor update the explanation
-        if self.has_violation(sig):
-            return
-
         sig_uri = self.signature_to_uri(sig)
-        self.graph.add((sig_uri, RDF.type, XSH.ViolationSignature))
+        SUGGESTION_SEPARATOR = "\n\n" # Define separator here or globally
 
-        # Set data properties
-        self.graph.add((sig_uri, XSH.constraintComponent, Literal(sig.constraint_id)))
+        # Check if an explanation node exists for this signature, create if not
+        expl_uri = self.graph.value(subject=sig_uri, predicate=XSH.hasExplanation)
+        new_explanation_node = False
+        if not expl_uri:
+            new_explanation_node = True
+            expl_uri = URIRef(str(sig_uri) + "_explanation")
+            self.graph.add((sig_uri, RDF.type, XSH.ViolationSignature))
+            self.graph.add((expl_uri, RDF.type, XSH.Explanation))
+            self.graph.add((sig_uri, XSH.hasExplanation, expl_uri))
+            # Add signature components only when creating the signature node
+            self.graph.add((sig_uri, XSH.constraintComponent, Literal(sig.constraint_id)))
+            if sig.property_path:
+                self.graph.add((sig_uri, XSH.propertyPath, Literal(sig.property_path)))
+            if sig.violation_type:
+                # Ensure violation_type is converted to string if it's an Enum or other object
+                self.graph.add((sig_uri, XSH.violationType, Literal(str(sig.violation_type))))
+            if sig.constraint_params:
+                try:
+                    # Use default=str for safety with complex param types
+                    json_params = json.dumps(sig.constraint_params, sort_keys=True, default=str)
+                    self.graph.add((sig_uri, XSH.constraintParams, Literal(json_params)))
+                except TypeError as e:
+                    logger.error(f"Failed to serialize constraint_params for {sig_uri}: {e}")
 
-        if sig.property_path:
-            self.graph.add((sig_uri, XSH.propertyPath, Literal(sig.property_path)))
+        # --- Store natural language text (preventing duplicates for same lang) ---
+        # Check if explanation text for this specific language already exists
+        has_existing_nlt = any(
+             isinstance(obj, Literal) and obj.language == language
+             for obj in self.graph.objects(expl_uri, XSH.naturalLanguageText)
+        )
+        # Add the new text only if it doesn't exist for this language and is not empty
+        if not has_existing_nlt and explanation.natural_language_explanation:
+             self.graph.add((expl_uri, XSH.naturalLanguageText, Literal(explanation.natural_language_explanation, lang=language)))
 
-        if sig.violation_type:
-            self.graph.add((sig_uri, XSH.violationType, Literal(sig.violation_type)))
+        # --- Store correction suggestions (COMBINED, preventing duplicates for same lang) ---
+        # Check if suggestions (as a combined literal) for this specific language already exist
+        has_existing_suggestions_for_lang = any(
+            isinstance(obj, Literal) and obj.language == language
+            for obj in self.graph.objects(expl_uri, XSH.correctionSuggestions)
+        )
+        # Add combined suggestions only if the input list is not empty AND none exist for this language yet
+        if explanation.correction_suggestions and not has_existing_suggestions_for_lang:
+            # *** JOIN the list into a single multi-line string ***
+            suggestion_string_to_add = explanation.correction_suggestions
+        self.graph.add((expl_uri, XSH.correctionSuggestions, Literal(suggestion_string_to_add, lang=language)))
+        # --- End of corrected suggestion handling ---
 
-        if sig.constraint_params:
-            # For simplicity, store them as a JSON string
-            json_params = json.dumps(sig.constraint_params, sort_keys=True)
-            self.graph.add((sig_uri, XSH.constraintParams, Literal(json_params)))
-
-        # Create explanation node
-        expl_uri = URIRef(str(sig_uri) + "_explanation")
-        self.graph.add((expl_uri, RDF.type, XSH.Explanation))
-        self.graph.add((sig_uri, XSH.hasExplanation, expl_uri))
-
-        # Store natural language text
-        if explanation.natural_language_explanation:
-            self.graph.add(
-                (
-                    expl_uri,
-                    XSH.naturalLanguageText,
-                    Literal(explanation.natural_language_explanation),
-                )
-            )
-
-        # Store multiple correction suggestions as a single text
-        if explanation.correction_suggestions:
-            joined_suggestions = "\n".join(explanation.correction_suggestions)
-            self.graph.add(
-                (expl_uri, XSH.correctionSuggestions, Literal(joined_suggestions))
-            )
-
+        # Add model info (overwriting previous value)
         if explanation.provided_by_model:
-            self.graph.add(
-                (expl_uri, XSH.providedByModel, Literal(explanation.provided_by_model))
-            )
+             # Remove existing model info before adding new one to prevent multiple values for the same explanation node
+             self.graph.remove((expl_uri, XSH.providedByModel, None))
+             self.graph.add((expl_uri, XSH.providedByModel, Literal(explanation.provided_by_model)))
 
-        # Store the complex data as JSON
-        if explanation.violation:
-            self.graph.add(
-                (
-                    expl_uri,
-                    XSH.violation,
-                    Literal(json.dumps(explanation.violation.to_dict())),
-                )
-            )
-        if explanation.justification_tree:
-            self.graph.add(
-                (
-                    expl_uri,
-                    XSH.justificationTree,
-                    Literal(json.dumps(explanation.justification_tree.to_dict())),
-                )
-            )
-        if explanation.retrieved_context:
-            self.graph.add(
-                (
-                    expl_uri,
-                    XSH.retrievedContext,
-                    Literal(json.dumps(explanation.retrieved_context.to_dict())),
-                )
-            )
+        # Store the complex data as JSON only when creating the explanation node for the first time
+        # This prevents overwriting potentially richer data from previous runs if only adding a new language later
+        if new_explanation_node:
+             # Helper to add JSON literal safely
+             def add_json_literal(predicate, data_object):
+                 # Check if the triple already exists before adding
+                 if data_object and not self.graph.value(expl_uri, predicate):
+                     try:
+                         # Assuming .to_dict() exists and handles internal complexities
+                         # Use default=str for broader compatibility (e.g., datetime, UUIDs)
+                         json_str = json.dumps(data_object.to_dict(), default=str)
+                         self.graph.add((expl_uri, predicate, Literal(json_str)))
+                     except AttributeError:
+                          logger.error(f"Object for {predicate} missing .to_dict() method for {expl_uri}")
+                     except TypeError as e:
+                         logger.error(f"Failed to serialize object for {predicate} for {expl_uri}: {e}")
+                     except Exception as e:
+                          logger.error(f"Unexpected error serializing {predicate} for {expl_uri}: {e}")
 
-        self.save_kg()
+             add_json_literal(XSH.violation, explanation.violation)
+             add_json_literal(XSH.justificationTree, explanation.justification_tree)
+             add_json_literal(XSH.retrievedContext, explanation.retrieved_context)
+
+        self.save_kg() # Save changes
 
     def clear(self):
-        """Clear the in-memory graph."""
+        """Clear the in-memory graph (excluding ontology potentially) and save."""
         self.graph = rdflib.Graph()
-        self.save_kg()
+        self.graph.bind("xsh", XSH)
+
+        self.save_kg() # Save the cleared (potentially empty) graph state
 
     def size(self) -> int:
         """Return the number of triples in the graph."""

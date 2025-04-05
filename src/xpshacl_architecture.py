@@ -189,7 +189,7 @@ class ExplanationOutput:
     """
 
     natural_language_explanation: str
-    correction_suggestions: List[str] = field(default_factory=list)
+    correction_suggestions: Optional[str] = None
     violation: Optional[ConstraintViolation] = None
     justification_tree: Optional[JustificationTree] = None
     retrieved_context: Optional[DomainContext] = None

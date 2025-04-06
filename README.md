@@ -2,7 +2,7 @@
 
 ## Overview
 
-xpSHACL is an explainable SHACL validation system designed to provide human-friendly, actionable explanations for SHACL constraint violations. Traditional SHACL validation engines often produce terse validation reports, making it difficult for users to understand why a violation occurred and how to fix it. This system addresses this issue by combining rule-based justification trees with retrieval-augmented generation (RAG) and large language models (LLMs) to produce detailed and understandable explanations.
+xpSHACL is an explainable SHACL validation system designed to provide human-friendly, actionable explanations for SHACL constraint violations. Traditional SHACL validation engines often produce terse validation reports and only in English, making it difficult for users to understand why a violation occurred and how to fix it. This system addresses this issue by combining rule-based justification trees with retrieval-augmented generation (RAG) and large language models (LLMs) to produce detailed, understandable, and multi-language explanations.
 
 A key feature of xpSHACL is its use of a **Violation Knowledge Graph (KG)**. This persistent graph stores previously encountered SHACL violation signatures along with their corresponding natural language explanations and correction suggestions. This caching mechanism enables xpSHACL to efficiently reuse previously generated explanations, significantly improving performance and consistency.
 
@@ -112,24 +112,50 @@ graph LR
 5.  (Optional, for running locally) Install and run Ollama, and pull a model (e.g., `gemma3:4b`):
 
     ```bash
-    ollama pull gemma:2b
+    ollama pull gemm3:4b
     ```
-    PS: `gemma3:4b` is recommended due to its speed, but `llama3.3` could be used for better quality or even `deepseek-r1` for more complex shapes.
+    PS: `gemma3:4b` model is recommended due to its speed and small size, while `deepseek-r1` could be used for more complex shapes.
 
-### Usage
+## Usage
+
+### Parameters
+
+The `main.py` script accepts the following command-line parameters:
+
+* `--data <path>`
+    * **Required.** Specifies the file path to the RDF data file that needs validation.
+    * Example: `--data data/example_data.ttl`
+* `--shapes <path>`
+    * **Required.** Specifies the file path to the SHACL shapes file to validate against.
+    * Example: `--shapes data/example_shapes.ttl`
+* `--model <model_name>`
+    * Optional. Specifies the identifier of the LLM model to be used via API (e.g., OpenAI, Google, Anthropic models).
+    * This parameter is ignored if the `--local` flag is set.
+    * If neither `--model` nor `--local` is provided, a default API model (e.g., `gpt-4o-mini-2024-07-18`) might be used.
+    * Example: `--model gpt-4o-mini-2024-07-18`
+* `--language <lang_code>`
+    * Optional. A comma-separated list specifying the desired language for the explanations and suggestions using ISO 639-1 codes (e.g., `en,es,de,fr,cn,pt`).
+    * Defaults to English (`en`) if not provided.
+    * Example: `--language de`
+* `--local`
+    * Optional. A flag indicating that a locally running LLM via Ollama should be used for generation.
+    * If this flag is present, the `--model` parameter (for API models) is ignored. The specific Ollama model used might be configured internally or default to a predefined one (e.g., `gemma3:4b`).
+    * Example: `--local`
+
+### Running the tool
 
 1.  Place your RDF data and SHACL shapes files in the `data/` directory.
 
 2.  Run the `main.py` script with your parameters, e.g.:
 
     ```bash
-    python src/main.py --data data/example_data.ttl --shapes data/example_shapes.ttl --model=gpt-4o-mini-2024-07-18 --language=en
+    python src/main.py --data data/example_data.ttl --shapes data/example_shapes.ttl --model=gpt-4o-mini-2024-07-18
     ```
 
     or to run with Ollama:
 
     ```bash
-    python src/main.py --data data/example_data.ttl --shapes data/example_shapes.ttl --local
+    python src/main.py --data data/example_data.ttl --shapes data/example_shapes.ttl --local --model=gemma3:4b
     ```
 
 3.  The system will validate the RDF data and output detailed explanations for any violations in JSON format.

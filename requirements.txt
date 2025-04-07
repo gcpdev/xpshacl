@@ -4,3 +4,4 @@ torch==2.6.0
 ollama==0.4.7
 python-dotenv==1.0.1
 Faker==37.0.0
+openai==1.65.5

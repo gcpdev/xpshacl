@@ -137,10 +137,12 @@ The `main.py` script accepts the following command-line parameters:
     * Optional. A comma-separated list specifying the desired language for the explanations and suggestions using ISO 639-1 codes (e.g., `en,es,de,fr,cn,pt`).
     * Defaults to English (`en`) if not provided.
     * Example: `--language de`
+    * **Tip**: works better with API-based models.
 * `--local`
     * Optional. A flag indicating that a locally running LLM via Ollama should be used for generation.
     * If this flag is present, the `--model` parameter (for API models) is ignored. The specific Ollama model used might be configured internally or default to a predefined one (e.g., `gemma3:4b`).
     * Example: `--local`
+    * **Warning**: Due to limitations of open-source models, using `--language` with `--local` (Ollama) might not produce the desired output in multiple languages as expected.
 
 ### Running the tool
 

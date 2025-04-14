@@ -112,7 +112,7 @@ graph LR
 5.  (Optional, for running locally) Install and run Ollama, and pull a model (e.g., `gemma3:4b`):
 
     ```bash
-    ollama pull gemm3:4b
+    ollama pull gemma3:4b
     ```
     PS: `gemma3:4b` model is recommended due to its speed and small size, while `deepseek-r1` could be used for more complex shapes.
 

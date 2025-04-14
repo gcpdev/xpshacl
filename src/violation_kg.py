@@ -219,7 +219,7 @@ class ViolationKnowledgeGraph:
         new_explanation_node = False
         if not expl_uri:
             new_explanation_node = True
-            expl_uri = URIRef(str(sig_uri) + "_explanation")
+            expl_uri = URIRef(str(sig_uri) + "_explanation") # Use a more predictable URI if needed
             self.graph.add((sig_uri, RDF.type, XSH.ViolationSignature))
             self.graph.add((expl_uri, RDF.type, XSH.Explanation))
             self.graph.add((sig_uri, XSH.hasExplanation, expl_uri))
@@ -228,69 +228,60 @@ class ViolationKnowledgeGraph:
             if sig.property_path:
                 self.graph.add((sig_uri, XSH.propertyPath, Literal(sig.property_path)))
             if sig.violation_type:
-                # Ensure violation_type is converted to string if it's an Enum or other object
                 self.graph.add((sig_uri, XSH.violationType, Literal(str(sig.violation_type))))
             if sig.constraint_params:
                 try:
-                    # Use default=str for safety with complex param types
                     json_params = json.dumps(sig.constraint_params, sort_keys=True, default=str)
                     self.graph.add((sig_uri, XSH.constraintParams, Literal(json_params)))
                 except TypeError as e:
                     logger.error(f"Failed to serialize constraint_params for {sig_uri}: {e}")
 
         # --- Store natural language text (preventing duplicates for same lang) ---
-        # Check if explanation text for this specific language already exists
         has_existing_nlt = any(
-             isinstance(obj, Literal) and obj.language == language
-             for obj in self.graph.objects(expl_uri, XSH.naturalLanguageText)
+            isinstance(obj, Literal) and obj.language == language
+            for obj in self.graph.objects(expl_uri, XSH.naturalLanguageText)
         )
-        # Add the new text only if it doesn't exist for this language and is not empty
         if not has_existing_nlt and explanation.natural_language_explanation:
-             self.graph.add((expl_uri, XSH.naturalLanguageText, Literal(explanation.natural_language_explanation, lang=language)))
+            self.graph.add((expl_uri, XSH.naturalLanguageText, Literal(explanation.natural_language_explanation, lang=language)))
 
         # --- Store correction suggestions (COMBINED, preventing duplicates for same lang) ---
-        # Check if suggestions (as a combined literal) for this specific language already exist
         has_existing_suggestions_for_lang = any(
             isinstance(obj, Literal) and obj.language == language
             for obj in self.graph.objects(expl_uri, XSH.correctionSuggestions)
         )
-        # Add combined suggestions only if the input list is not empty AND none exist for this language yet
+        # Combine list into single string before adding
         if explanation.correction_suggestions and not has_existing_suggestions_for_lang:
-            # *** JOIN the list into a single multi-line string ***
-            suggestion_string_to_add = explanation.correction_suggestions
-        self.graph.add((expl_uri, XSH.correctionSuggestions, Literal(suggestion_string_to_add, lang=language)))
-        # --- End of corrected suggestion handling ---
+            # Check if it's already a string (from LLM) or needs joining (if manually constructed as list)
+            if isinstance(explanation.correction_suggestions, list):
+                 suggestion_string_to_add = SUGGESTION_SEPARATOR.join(explanation.correction_suggestions)
+            else: # Assume it's already the desired string format
+                 suggestion_string_to_add = str(explanation.correction_suggestions) # Ensure string type
+            self.graph.add((expl_uri, XSH.correctionSuggestions, Literal(suggestion_string_to_add, lang=language)))
 
-        # Add model info (overwriting previous value)
+
+        # Add model info (overwriting previous value if necessary)
         if explanation.provided_by_model:
-             # Remove existing model info before adding new one to prevent multiple values for the same explanation node
-             self.graph.remove((expl_uri, XSH.providedByModel, None))
-             self.graph.add((expl_uri, XSH.providedByModel, Literal(explanation.provided_by_model)))
+            # Remove existing model info ONLY if it differs or only add if none exists?
+            # Simpler: remove and add ensures the latest model is recorded.
+            self.graph.remove((expl_uri, XSH.providedByModel, None))
+            self.graph.add((expl_uri, XSH.providedByModel, Literal(explanation.provided_by_model)))
 
         # Store the complex data as JSON only when creating the explanation node for the first time
-        # This prevents overwriting potentially richer data from previous runs if only adding a new language later
         if new_explanation_node:
              # Helper to add JSON literal safely
              def add_json_literal(predicate, data_object):
-                 # Check if the triple already exists before adding
                  if data_object and not self.graph.value(expl_uri, predicate):
                      try:
-                         # Assuming .to_dict() exists and handles internal complexities
-                         # Use default=str for broader compatibility (e.g., datetime, UUIDs)
                          json_str = json.dumps(data_object.to_dict(), default=str)
                          self.graph.add((expl_uri, predicate, Literal(json_str)))
-                     except AttributeError:
-                          logger.error(f"Object for {predicate} missing .to_dict() method for {expl_uri}")
-                     except TypeError as e:
-                         logger.error(f"Failed to serialize object for {predicate} for {expl_uri}: {e}")
-                     except Exception as e:
-                          logger.error(f"Unexpected error serializing {predicate} for {expl_uri}: {e}")
+                     except AttributeError: logger.error(f"Object for {predicate} missing .to_dict() for {expl_uri}")
+                     except TypeError as e: logger.error(f"Failed to serialize {predicate} for {expl_uri}: {e}")
+                     except Exception as e: logger.error(f"Unexpected error serializing {predicate} for {expl_uri}: {e}")
+
 
              add_json_literal(XSH.violation, explanation.violation)
              add_json_literal(XSH.justificationTree, explanation.justification_tree)
              add_json_literal(XSH.retrievedContext, explanation.retrieved_context)
-
-        self.save_kg() # Save changes
 
     def clear(self):
         """Clear the in-memory graph (excluding ontology potentially) and save."""

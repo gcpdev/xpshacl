@@ -1,3 +1,5 @@
+# src/main.py
+
 import argparse, json, time, logging
 from rdflib import Graph
 
@@ -5,7 +7,7 @@ from extended_shacl_validator import ExtendedShaclValidator
 from justification_tree_builder import JustificationTreeBuilder
 from context_retriever import ContextRetriever
 from explanation_generator import ExplanationGenerator, LocalExplanationGenerator
-from xpshacl_architecture import ExplanationOutput
+from xpshacl_architecture import ExplanationOutput, ConstraintViolation
 from violation_kg import ViolationKnowledgeGraph
 from violation_signature_factory import create_violation_signature
 
@@ -41,79 +43,161 @@ def main():
     languages = [lang.strip() for lang in args.language.lower().split(',')]
 
     # Load data and shapes graphs
+    logger.info("Loading RDF graphs...")
     try:
         data_graph = Graph().parse(args.data, format="ttl")
         shapes_graph = Graph().parse(args.shapes, format="ttl")
     except Exception as e:
         logger.error(f"Error loading RDF graphs: {e}")
         return
+    logger.info("RDF graphs loaded.")
 
     # Initialize components
+    logger.info("Initializing components...")
     validator = ExtendedShaclValidator(shapes_graph, args.inference)
     justification_builder = JustificationTreeBuilder(data_graph, shapes_graph)
     context_retriever = ContextRetriever(data_graph, shapes_graph)
-    violation_kg = ViolationKnowledgeGraph()
+    violation_kg = ViolationKnowledgeGraph() # KG is loaded during init
 
     if args.local:
         explanation_generator = LocalExplanationGenerator()
     else:
         explanation_generator = ExplanationGenerator(args.model)
+    logger.info("Components initialized.")
 
-    # Validate and explain
+    # Validate
+    logger.info("Starting SHACL validation...")
+    validation_start_time = time.time()
     is_valid, validation_graph, violations = validator.validate(data_graph)
+    validation_end_time = time.time()
+    logger.info(f"Validation finished in {validation_end_time - validation_start_time:.4f} seconds. Found {len(violations)} violations.")
 
     if not violations:
         logger.info("Validation successful. No violations found.")
+        end_time = time.time()
+        logger.info(f"Total execution time: {end_time - start_time:.4f} seconds")
         return
 
-    explanations = []
+    # --- Process Violations by Signature ---
+    logger.info("Grouping violations by signature...")
+    violations_by_signature = {}
     for violation in violations:
-        # 1. Build the justification tree
-        jt = justification_builder.build_justification_tree(violation)
-        # 2. Retrieve any domain context
-        context = context_retriever.retrieve_context(violation)
-        # 3. Generate signature
-        signature = create_violation_signature(violation)
+        try:
+            signature = create_violation_signature(violation)
+            if signature not in violations_by_signature:
+                violations_by_signature[signature] = []
+            violations_by_signature[signature].append(violation)
+        except Exception as e:
+            logger.error(f"Error creating signature for violation {violation}: {e}")
+            # Decide how to handle signature creation errors, e.g., skip violation
+            continue
+    logger.info(f"Found {len(violations_by_signature)} unique violation signatures.")
 
-        # 4. Check the KG cache for each requested language
-        language_explanations = {}
+
+    explanations_by_signature = {} # Cache explanations generated/retrieved in this run
+    processed_signatures = 0
+    total_signatures = len(violations_by_signature)
+
+    logger.info("Processing unique violation signatures...")
+    for signature, representative_violations in violations_by_signature.items():
+        processed_signatures += 1
+        logger.info(f"Processing signature {processed_signatures}/{total_signatures}: {signature}")
+
+        if not representative_violations: continue
+        representative_violation = representative_violations[0] # Use the first instance
+
+        # --- Perform expensive operations ONCE per signature ---
+        logger.debug(f"Building justification for signature: {signature}")
+        jt = justification_builder.build_justification_tree(representative_violation)
+
+        logger.debug(f"Retrieving context for signature: {signature}")
+        context = context_retriever.retrieve_context(representative_violation)
+        # -------------------------------------------------------
+
+        language_explanations = {} # Holds ExplanationOutput objects for this signature
+        languages_to_generate = []
+
+        # 1. Check KG cache for each requested language
+        logger.debug(f"Checking KG cache for signature: {signature}")
         for lang in languages:
-            cached_explanation = violation_kg.get_explanation(signature, lang)
-            if cached_explanation:
-                language_explanations[lang] = cached_explanation
+            cached_explanation_output = violation_kg.get_explanation(signature, lang) # Expects ExplanationOutput or None
+            if cached_explanation_output:
+                logger.debug(f"Cache hit for signature {signature}, lang {lang}.")
+                language_explanations[lang] = cached_explanation_output
+            else:
+                logger.debug(f"Cache miss for signature {signature}, lang {lang}.")
+                languages_to_generate.append(lang)
 
-        # 5. Generate missing explanations using the LLM
-        languages_to_generate = [lang for lang in languages if lang not in language_explanations]
+        # 2. Generate missing explanations using the LLM
         if languages_to_generate:
+            logger.info(f"Generating explanations via LLM for signature {signature}, languages: {languages_to_generate}")
+            # llm_output format: Dict[str, Tuple[str, str]] -> {lang: (nlt, cs_string)}
             llm_output = explanation_generator.generate_explanation_output(
-                violation, jt, context, languages_to_generate
+                representative_violation, jt, context, languages_to_generate
             )
-            # Store the generated explanations in the KG
-            for lang, (nlt, cs) in llm_output.items():
+
+            # 3. Store the newly generated explanations in the KG (in memory)
+            for lang, (nlt, cs_string) in llm_output.items():
                 explanation = ExplanationOutput(
                     natural_language_explanation=nlt,
-                    correction_suggestions=cs,
-                    violation=violation,
+                    correction_suggestions=cs_string, # Store the combined string
+                    violation=representative_violation, # Associate with the representative violation
                     justification_tree=jt,
                     retrieved_context=context,
-                    provided_by_model=explanation_generator.model_name if not args.local else "local",
+                    provided_by_model=explanation_generator.model_name, # Assuming local has model_name too
                 )
+                # Add to KG in memory (DOES NOT SAVE TO DISK)
                 violation_kg.add_violation(signature, explanation, lang)
-                language_explanations[lang] = explanation
+                language_explanations[lang] = explanation # Store the ExplanationOutput object locally
 
-        # Combine explanations for all requested languages
-        combined_explanation = {lang: language_explanations.get(lang).to_dict() for lang in languages}
-        explanations.append(combined_explanation)
+        # Store the ExplanationOutput objects for this signature (keyed by lang)
+        explanations_by_signature[signature] = language_explanations
+
+    # --- Save the Violation KG *once* after processing all signatures ---
+    logger.info("Saving Violation Knowledge Graph...")
+    violation_kg.save_kg()
+    logger.info("Violation Knowledge Graph saved.")
+
+    # --- Reconstruct Final Output ---
+    # Create the final list, associating each original violation instance
+    # with the explanation corresponding to its signature.
+    logger.info("Reconstructing final output...")
+    final_explanations_output = []
+    for violation in violations:
+         try:
+             signature = create_violation_signature(violation)
+             explanation_map_for_sig = explanations_by_signature.get(signature) # Get the dict {lang: ExplanationOutput}
+
+             if explanation_map_for_sig:
+                 # Convert ExplanationOutput objects to dicts for JSON output
+                 explanation_details_dict = {
+                     lang: expl_output.to_dict()
+                     for lang, expl_output in explanation_map_for_sig.items()
+                 }
+                 output_entry = {
+                     # Optionally include violation instance details if needed, useful for debugging
+                     # "violation_instance": violation.to_dict(),
+                     "focus_node": violation.focus_node, # Minimal info to identify the instance
+                     "explanation": explanation_details_dict # Contains NLT, CS, context etc. per lang
+                 }
+                 final_explanations_output.append(output_entry)
+             else:
+                 logger.warning(f"Could not find explanation for signature {signature} derived from violation {violation.focus_node}. Skipping in final output.")
+
+         except Exception as e:
+             logger.error(f"Error reconstructing output for violation {violation}: {e}")
+             # Decide how to handle reconstruction errors
+
+    logger.info("Final output reconstructed.")
 
     # Output explanations
-    print(json.dumps(explanations, indent=2, default=str))
+    print(json.dumps(final_explanations_output, indent=2, default=str))
 
     end_time = time.time()  # Record the end time
     elapsed_time = end_time - start_time  # Calculate the elapsed time
 
-    logger.info(f"Total execution time: {elapsed_time:.4f} seconds")  # Log the elapsed time
-    print(f"Total execution time: {elapsed_time:.4f} seconds")  # Print the elapsed time
-
+    logger.info(f"Total execution time: {elapsed_time:.4f} seconds")
+    logger.info("xpSHACL processing completed.")
 
 if __name__ == "__main__":
     main()

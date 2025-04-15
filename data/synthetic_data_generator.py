@@ -9,7 +9,7 @@ ex = Namespace("http://xpshacl.org/#")
 sh = Namespace("http://www.w3.org/ns/shacl#")
 
 
-def generate_complex_data(num_items=500):
+def generate_complex_data(num_items=10000):
     g = Graph()
     for i in range(num_items):
         item = ex[f"item{i}"]

@@ -1,6 +1,4 @@
-import requests
-import json
-import logging
+import requests, json, time, logging
 import os
 from io import BytesIO
 from rdflib import Graph, RDF, RDFS, OWL
@@ -146,10 +144,14 @@ def stream_and_run_tests(urls):
     logger.info(f"failed: {fail}")
 
 if __name__ == "__main__":
+    start_time = time.time()  # Record the start time
     os.makedirs(outdir, exist_ok=True)
     logger.info("Checking the LOV cloud...")
     parse()
     logger.info("Starting tests...")
     stream_and_run_tests(ontologies_urls)
-    logger.info(f"Ontologies not tested: {fail}")
-    logger.info(f"Ontologies tested: {success}")
+    end_time = time.time()  # Record the end time
+    elapsed_time = end_time - start_time  # Calculate the elapsed time
+
+    logger.info(f"Total execution time: {elapsed_time:.4f} seconds")  # Log the elapsed time
+    print(f"Total execution time: {elapsed_time:.4f} seconds")  # Print the elapsed time

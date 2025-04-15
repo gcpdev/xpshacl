@@ -243,6 +243,49 @@ If you want more complex data exmaples to test xpSHACL, you can generate synthet
         * SPARQL constraints (`sh:SPARQLConstraintComponent`)
     * Serializes the shapes graph to `complex_shapes.ttl` in Turtle format.
 
+
+## Performance evaluation
+  
+  
+  ![Performance Chart](chart.png)
+
+  The chart visually compares the execution time of `xpSHACL` against the standard `pyshacl` library, which serves as the baseline. Since `xpSHACL` utilizes `pyshacl` for the core validation, the chart highlights the additional time incurred by `xpSHACL`'s explainability features, such as justification tree building, context retrieval, Violation KG interaction, and LLM-based explanation generation. A key aspect demonstrated is the impact of the Violation KG cache: scenarios where explanations are retrieved from the cache (cache hit) are significantly faster than those requiring new LLM generation (cache miss). In essence, the chart quantifies the performance overhead associated with adding these explainability layers on top of standard SHACL validation.
+
+  Those tests can be reproduced as follows:
+
+  1. Create `complex_data.ttl` and `complex_shapes.ttl` outuput files using the `synthetic_data_generator.py` script as described previously; inside of `data` folder, run:
+  ```bash
+    python generate_complex_data.py
+  ```
+  2. Then, in the root folder, run the loop scripts for `pyshacl` and `xpSHACL`:
+  ```bash
+    $ python loop_pyshacl.py -n 10
+    Run #1: 4.2536452
+    Run #2: 4.2741511
+    Run #3: 4.2675810
+    Run #4: 4.2672777
+    Run #5: 4.2615638
+    Run #6: 4.2812388
+    Run #7: 4.3250489
+    Run #8: 4.2688792
+    Run #9: 4.2656274
+    Run #10: 4.2828491
+    $ python loop_xpshacl.py -n 10
+    Run #1: 65.8021901
+    Run #2: 20.8800125
+    Run #3: 20.7951224
+    Run #4: 20.9706643
+    Run #5: 20.9720330
+    Run #6: 20.7527769
+    Run #7: 20.9059060
+    Run #8: 20.9475248
+    Run #9: 20.8706739
+    Run #10: 20.8422592
+  ```
+
+  The output of runtimes also demonstrates stability for this particular scenario. The execution time is consistent, predictable, and not subject to significant random variations.
+  
+
 ## Project Structure
 
 ```

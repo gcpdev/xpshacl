@@ -1,6 +1,4 @@
-# src/main.py
-
-import argparse, json, time, logging
+import argparse, json, time, logging, sys
 from rdflib import Graph
 
 from extended_shacl_validator import ExtendedShaclValidator
@@ -21,8 +19,8 @@ def main():
     start_time = time.time()  # Record the start time
 
     parser = argparse.ArgumentParser(description="xpSHACL: Explainable SHACL Validation")
-    parser.add_argument("--data", required=True, help="Path to the RDF data file")
-    parser.add_argument("--shapes", required=True, help="Path to the SHACL shapes file")
+    parser.add_argument("-d", "--data", required=True, help="Path to the RDF data file")
+    parser.add_argument("-s", "--shapes", required=True, help="Path to the SHACL shapes file")
     parser.add_argument("--local", action="store_true", help="Use local LLM (Ollama)")
     parser.add_argument(
         "--model", default="gpt-4o-mini-2024-07-18", help="Provider's API model name (if not using --local)"
@@ -36,6 +34,13 @@ def main():
         "--language",
         default="en",
         help="Language code (ISO-639-1) or comma-separated list of language codes for explanations (default: en)",
+    )
+    parser.add_argument(
+        '-o', '--output',
+        dest='output_file',  # Variable name to store the path
+        type=str,
+        default=None,        # Default is None, meaning no file specified
+        help="Path to the file where the output report should be saved. If not specified, prints to console."
     )
 
     args = parser.parse_args()
@@ -190,8 +195,22 @@ def main():
 
     logger.info("Final output reconstructed.")
 
-    # Output explanations
-    print(json.dumps(final_explanations_output, indent=2, default=str))
+    final_output_string = json.dumps(final_explanations_output, indent=2, default=str)
+
+    if args.output_file:
+        # Output file was specified
+        try:
+            with open(args.output_file, 'w', encoding='utf-8') as f:
+                f.write(final_output_string)
+            logger.info(f"Output successfully written to: {args.output_file}")
+        except IOError as e:
+            logger.error(f"Error writing to output file {args.output_file}: {e}")
+            logger.info("\n--- Outputting to Console due to File Error ---")
+            logger.info(final_output_string)
+    else:
+        # No output file specified, log to console
+        logger.info(final_output_string)
+    
 
     end_time = time.time()  # Record the end time
     elapsed_time = end_time - start_time  # Calculate the elapsed time

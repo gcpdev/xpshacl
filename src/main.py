@@ -21,6 +21,7 @@ def main():
     parser = argparse.ArgumentParser(description="xpSHACL: Explainable SHACL Validation")
     parser.add_argument("-d", "--data", required=True, help="Path to the RDF data file")
     parser.add_argument("-s", "--shapes", required=True, help="Path to the SHACL shapes file")
+    parser.add_argument("--input_report", help="Path to an existing SHACL validation report file (skips validation step)")
     parser.add_argument("--local", action="store_true", help="Use local LLM (Ollama)")
     parser.add_argument(
         "--model", default="gpt-4o-mini-2024-07-18", help="Provider's API model name (if not using --local)"
@@ -70,18 +71,69 @@ def main():
         explanation_generator = ExplanationGenerator(args.model)
     logger.info("Components initialized.")
 
-    # Validate
-    logger.info("Starting SHACL validation...")
-    validation_start_time = time.time()
-    is_valid, validation_graph, violations = validator.validate(data_graph)
-    validation_end_time = time.time()
-    logger.info(f"Validation finished in {validation_end_time - validation_start_time:.4f} seconds. Found {len(violations)} violations.")
+    # Determine violations source (validation or loaded report)
+    if args.input_report:
+        logger.info(f"Loading validation report from {args.input_report}...")
+        report_graph = Graph()
+        try:
+            # Try opening with utf-8 first (most common)
+            with open(args.input_report, 'r', encoding='utf-8') as report_file:
+                report_graph.parse(report_file, format="ttl") # Assuming TTL format for reports
+
+        except UnicodeDecodeError:
+            # If utf-8 fails, try utf-16 (common for BOM issues)
+            logger.warning(f"UTF-8 decoding failed for {args.input_report}. Trying UTF-16...")
+            try:
+                with open(args.input_report, 'r', encoding='utf-16') as report_file:
+                    report_graph.parse(report_file, format="ttl")
+            except Exception as e:
+                logger.error(f"Failed to decode report file {args.input_report} with UTF-16. Please ensure it is a valid RDF file in a supported encoding.")
+                logger.error(f"Original error: {e}")
+                sys.exit(1) # Exit if decoding fails with common encodings
+
+        except FileNotFoundError:
+            logger.error(f"Input report file not found at {args.input_report}")
+            sys.exit(1) # Exit if the specified report file doesn't exist
+        except Exception as e:
+            logger.error(f"Error loading or parsing input report {args.input_report}: {e}")
+            sys.exit(1) # Exit on other loading/parsing errors
+
+        # Extract violations from the report graph using the validator's method
+        # We still need the validator object initialized with shapes_graph
+        # for context retrieval and justification building later.
+        # The _extract_detailed_violations method processes the report graph.
+        violations = validator._extract_detailed_violations(report_graph)
+        logger.info(f"Report loaded. Found {len(violations)} violations.")
+
+        # Determine overall validity from report (optional but good practice)
+        # A report is invalid if it contains any sh:ValidationResult
+        if len(violations) > 0:
+            is_valid = False
+        else:
+            is_valid = True # Report was loaded, but contained no violations
+
+
+    else:
+        # Run validation against the data graph
+        logger.info("Starting SHACL validation...")
+        try:
+            is_valid, validation_report_graph, violations = validator.validate(data_graph)
+            validation_end_time = time.time()
+            logger.info(f"Validation finished in {validation_end_time - validation_start_time:.4f} seconds. Found {len(violations)} violations.")
+        except Exception as e:
+            logger.error(f"Error during SHACL validation: {e}")
+            sys.exit(1) # Exit on validation errors
+
 
     if not violations:
-        logger.info("Validation successful. No violations found.")
+        logger.info("No violations found.")
         end_time = time.time()
-        logger.info(f"Total execution time: {end_time - start_time:.4f} seconds")
-        return
+        elapsed_time = end_time - start_time
+        logger.info(f"Total execution time: {elapsed_time:.4f} seconds")
+        # Optionally print a success message if valid and no violations
+        if is_valid:
+            print("SHACL validation successful, no violations found.")
+        sys.exit(0) # Exit successfully if no violations
 
     # --- Process Violations by Signature ---
     logger.info("Grouping violations by signature...")

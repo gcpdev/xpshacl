@@ -128,6 +128,8 @@ The `main.py` script accepts the following command-line parameters:
 * `--shapes <path>`
     * **Required.** Specifies the file path to the SHACL shapes file to validate against.
     * Example: `--shapes data/example_shapes.ttl`
+* `--input_report <path>`
+    * Optional. Specifies the file path to a previously generated SHACL Violation Report in `ttl` file. 
 * `--model <model_name>`
     * Optional. Specifies the identifier of the LLM model to be used via API (e.g., OpenAI, Google, Anthropic models).
     * This parameter is ignored if the `--local` flag is set.

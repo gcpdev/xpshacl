@@ -8,6 +8,11 @@ A key feature of xpSHACL is its use of a **Violation Knowledge Graph (KG)**. Thi
 
 **Disclaimer:** xpSHACL is an independent project and is **not affiliated with or related to any existing projects or initiatives using the name "SHACL-X" or similar variants.** Any perceived similarities are purely coincidental.
 
+## Research Paper
+
+xpSHACL tool is described in details in its research paper, accepted to be published in the 2nd LLM+Graph Workshop, colocated at the VLDB 2025 Conference. 
+The full paper with implementation details is [available at arXiv](https://arxiv.org/abs/2507.08432), and soon to be published in the conference volumes.
+
 ## Architecture
 
 ```mermaid
